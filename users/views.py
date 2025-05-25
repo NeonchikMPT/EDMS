@@ -22,7 +22,6 @@ from .forms import RegisterForm, ProfileForm, LoginForm, PasswordResetRequestFor
 from .models import User, PasswordResetToken
 from docs.models import Document
 
-
 def generate_temp_password(length=8):
     characters = string.ascii_letters + string.digits
     return ''.join(random.choice(characters) for _ in range(length))
@@ -81,7 +80,8 @@ def user_edit(request, user_id):
 
         # Обработка редактирования пользователя
         try:
-            # Обновление остальных полей
+            # Обновление всех полей
+            user.email = request.POST.get('email', '').strip()
             user.full_name = request.POST.get('full_name', '').strip()
             user.email_notifications = 'email_notifications' in request.POST
             if request.user.role == 'admin':  # Только админ может менять роль
@@ -136,7 +136,6 @@ def user_delete(request, user_id):
         return redirect('user_list')
     return render(request, 'users/user_delete.html', {'user': user})
 
-
 @login_required
 def profile_view(request):
     if request.method == 'POST':
@@ -154,6 +153,7 @@ def profile_view(request):
         if form.is_valid():
             try:
                 user = form.save(commit=False)
+                user.email = request.POST.get('email', '').strip()  # Обновляем email
 
                 # Проверка паролей только если они были отправлены
                 new_password = form.cleaned_data.get('new_password', '').strip()

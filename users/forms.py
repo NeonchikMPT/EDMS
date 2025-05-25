@@ -1,7 +1,6 @@
 from django import forms
 from .models import User, PasswordResetToken
 
-
 class RegisterForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput, label="Пароль")
 
@@ -72,11 +71,12 @@ class UserProfileForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ['full_name', 'avatar', 'email_notifications', 'new_password', 'confirm_password']
+        fields = ['email', 'full_name', 'avatar', 'email_notifications', 'new_password', 'confirm_password']
         widgets = {
             'email_notifications': forms.CheckboxInput(),
         }
         labels = {
+            'email': 'Email',
             'full_name': 'Полное имя',
             'avatar': 'Аватар',
             'email_notifications': 'Получать уведомления на email',
@@ -86,6 +86,12 @@ class UserProfileForm(forms.ModelForm):
         cleaned_data = super().clean()
         new_password = cleaned_data.get('new_password')
         confirm_password = cleaned_data.get('confirm_password')
+        email = cleaned_data.get('email')
+
+        # Проверяем уникальность email, исключая текущего пользователя
+        if email and email != self.instance.email:
+            if User.objects.filter(email=email).exclude(id=self.instance.id).exists():
+                raise forms.ValidationError('Пользователь с таким email уже существует.')
 
         if new_password or confirm_password:
             if new_password != confirm_password:

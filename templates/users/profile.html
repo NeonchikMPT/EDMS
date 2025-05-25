@@ -305,6 +305,13 @@
                     <!-- Скрытое поле для загрузки аватарки -->
                     <input type="file" name="avatar" id="id_avatar" style="display: none;" accept="image/*">
 
+                    <!-- Поле для Email -->
+                    <div class="mb-3">
+                        <label for="id_email" class="form-label">Email</label>
+                        <input type="email" name="email" id="id_email" class="form-control" value="{{ user.email }}" required>
+                        <div class="invalid-feedback">Пожалуйста, введите корректный email.</div>
+                    </div>
+
                     <!-- Поле для ФИО -->
                     <div class="mb-3">
                         <label for="id_full_name" class="form-label">ФИО</label>
