@@ -1,6 +1,7 @@
 from django import forms
 from .models import User, PasswordResetToken
 
+
 class RegisterForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput, label="Пароль")
 
@@ -80,10 +81,6 @@ class UserProfileForm(forms.ModelForm):
             'avatar': 'Аватар',
             'email_notifications': 'Получать уведомления на email',
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['avatar'].widget.attrs.update({'accept': 'image/jpeg,image/png'})
 
     def clean(self):
         cleaned_data = super().clean()
