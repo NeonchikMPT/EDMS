@@ -21,6 +21,7 @@ from docs.views import error_403
 from .forms import RegisterForm, ProfileForm, LoginForm, PasswordResetRequestForm, PasswordResetForm, UserProfileForm
 from .models import User, PasswordResetToken
 from docs.models import Document
+from django.db import IntegrityError
 
 def generate_temp_password(length=8):
     characters = string.ascii_letters + string.digits
@@ -66,35 +67,30 @@ def user_documents(request, user_id):
 @login_required
 def user_edit(request, user_id):
     user = get_object_or_404(User, id=user_id)
-    if request.user.role != 'admin' and request.user != user:  # Проверка прав
+    if request.user.role != 'admin' and request.user != user:
         return error_403(request)
     if request.method == 'POST':
-        # Обработка удаления аватара
         if 'delete_avatar' in request.POST:
             if user.avatar:
-                user.avatar.delete()  # Удаляет файл с диска
+                user.avatar.delete()
             user.avatar = None
             user.save()
             messages.success(request, 'Аватар удалён.')
             return redirect('user_edit', user_id=user.id)
 
-        # Обработка редактирования пользователя
         try:
-            # Обновление всех полей
             user.email = request.POST.get('email', '').strip()
             user.full_name = request.POST.get('full_name', '').strip()
             user.email_notifications = 'email_notifications' in request.POST
-            if request.user.role == 'admin':  # Только админ может менять роль
+            if request.user.role == 'admin':
                 user.role = request.POST.get('role', 'staff')
 
-            # Обработка загрузки аватара
             if 'avatar' in request.FILES:
                 user.avatar = request.FILES['avatar']
 
-            # Проверка паролей только если они были отправлены
             new_password = request.POST.get('new_password', '').strip()
             confirm_password = request.POST.get('confirm_password', '').strip()
-            if new_password and confirm_password:  # Проверяем, что оба поля непустые
+            if new_password and confirm_password:
                 if new_password != confirm_password:
                     messages.error(request, 'Пароли не совпадают.')
                     return render(request, 'users/user_edit.html', {'user': user})
@@ -105,11 +101,10 @@ def user_edit(request, user_id):
 
             user.save()
 
-            # Если редактируемый пользователь — это текущий пользователь и был изменен пароль
             if user == request.user and new_password:
                 user = authenticate(request, username=user.email, password=new_password)
                 if user:
-                    login(request, user)  # Обновляем сессию
+                    login(request, user)
                     messages.success(request, 'Пользователь успешно обновлён.')
                 else:
                     messages.error(request, 'Ошибка при обновлении сессии после смены пароля.')
@@ -118,8 +113,11 @@ def user_edit(request, user_id):
                 messages.success(request, 'Пользователь успешно обновлён.')
 
             return redirect('user_edit', user_id=user.id)
-        except Exception as e:
-            messages.error(request, f'Ошибка при сохранении: {str(e)}')
+        except IntegrityError as e:
+            if 'Duplicate entry' in str(e):
+                messages.error(request, 'Этот email уже используется другим пользователем.')
+            else:
+                messages.error(request, f'Ошибка при сохранении: {str(e)}')
             return render(request, 'users/user_edit.html', {'user': user})
 
     return render(request, 'users/user_edit.html', {'user': user})
@@ -139,26 +137,23 @@ def user_delete(request, user_id):
 @login_required
 def profile_view(request):
     if request.method == 'POST':
-        # Обработка удаления аватара
         if 'delete_avatar' in request.POST:
             if request.user.avatar:
-                request.user.avatar.delete()  # Удаляем файл аватара
+                request.user.avatar.delete()
                 request.user.avatar = None
                 request.user.save()
                 messages.success(request, 'Аватар удалён')
                 return redirect('profile')
 
-        # Обработка обновления профиля
         form = UserProfileForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
             try:
                 user = form.save(commit=False)
-                user.email = request.POST.get('email', '').strip()  # Обновляем email
+                user.email = request.POST.get('email', '').strip()
 
-                # Проверка паролей только если они были отправлены
                 new_password = form.cleaned_data.get('new_password', '').strip()
                 confirm_password = form.cleaned_data.get('confirm_password', '').strip()
-                if new_password and confirm_password:  # Проверяем, что оба поля непустые
+                if new_password and confirm_password:
                     if new_password != confirm_password:
                         messages.error(request, 'Пароли не совпадают.')
                         return render(request, 'users/profile.html', {'form': form})
@@ -170,11 +165,10 @@ def profile_view(request):
                 user.save()
                 print(f"Profile updated for {user.email}, email_notifications: {user.email_notifications}")
 
-                # Обновление сессии только если менялся пароль
                 if new_password:
                     user = authenticate(request, username=user.email, password=new_password)
                     if user:
-                        login(request, user)  # Обновляем сессию
+                        login(request, user)
                         messages.success(request, 'Профиль обновлён')
                     else:
                         messages.error(request, 'Ошибка при обновлении сессии после смены пароля')
@@ -183,9 +177,11 @@ def profile_view(request):
                     messages.success(request, 'Профиль обновлён')
 
                 return redirect('profile')
-            except Exception as e:
-                print(f"Error saving profile for {request.user.email}: {str(e)}")
-                messages.error(request, f'Ошибка при сохранении: {str(e)}')
+            except IntegrityError as e:
+                if 'Duplicate entry' in str(e):
+                    messages.error(request, 'Этот email уже используется другим пользователем.')
+                else:
+                    messages.error(request, f'Ошибка при сохранении: {str(e)}')
                 return render(request, 'users/profile.html', {'form': form})
         else:
             print(f"Form validation failed for {request.user.email}: {form.errors}")
