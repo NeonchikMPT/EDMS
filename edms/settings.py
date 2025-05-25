@@ -24,11 +24,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'users',
     'docs',
+    'cloudinary_storage',
+    'cloudinary',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Добавлено для статических файлов
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -141,3 +143,17 @@ X_FRAME_OPTIONS = 'DENY'
 
 CSRF_COOKIE_SECURE = True  # Только HTTPS
 CSRF_TRUSTED_ORIGINS = ['https://edms-ozqc.onrender.com']  # Обновлено для Render
+
+# Cloudinary настройки
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': config('CLOUDINARY_API_KEY'),
+    'API_SECRET': config('CLOUDINARY_API_SECRET'),
+}
+
+# Используем Cloudinary для медиа-файлов
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+# Лимиты загрузки файлов
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5 MB
