@@ -83,7 +83,6 @@
 
    ```env
    # База данных
-close
    DB_NAME=edms_db
    DB_USER=postgres
    DB_PASSWORD=your_password
