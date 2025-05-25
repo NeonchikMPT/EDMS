@@ -9,10 +9,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DJANGO_DEBUG', default='False') == 'True'  # Позволяет управлять через переменную окружения
+DEBUG = config('DJANGO_DEBUG', default='False') == 'True'
 
 # Укажи домен или IP твоего сервера
-ALLOWED_HOSTS = ['edms-ozqc.onrender.com', '127.0.0.1', 'localhost']  # Обновлено для Render
+ALLOWED_HOSTS = ['edms-ozqc.onrender.com', '127.0.0.1', 'localhost']
 
 # Application definition
 INSTALLED_APPS = [
@@ -59,11 +59,11 @@ TEMPLATES = [
 WSGI_APPLICATION = 'edms.wsgi.application'
 
 # Database
-# Старая настройка базы данных (закомментирована)
+# Старая настройка базы данных (уже закомментирована, оставляем как есть)
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': config('DB_NAME', default='edms_db'),  # Имя базы можно тоже сделать переменной
+#         'NAME': config('DB_NAME', default='edms_db'),
 #         'USER': config('DB_USER', default='postgres'),
 #         'PASSWORD': config('DB_PASSWORD'),
 #         'HOST': config('DB_HOST', default='localhost'),
@@ -96,7 +96,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # Internationalization
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru-ru'  # Изменено на ru-ru для русскоязычного интерфейса
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
@@ -106,43 +106,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.User'
 
+# Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'  # Добавлено для продакшена
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-
-LOGIN_URL = '/users/login/'
-
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-SESSION_COOKIE_AGE = 1209600  # 2 недели
-SESSION_COOKIE_SECURE = True  # Только HTTPS в продакшене
-SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_EXPIRE_AT_BROWSER_CLOSE = False
-SESSION_SAVE_EVERY_REQUEST = True
-
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.mail.ru'
-EMAIL_PORT = 465
-EMAIL_USE_SSL = True
-EMAIL_HOST_USER = 'dsistema@internet.ru'
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = 'dsistema@internet.ru'
-
-# Настройки безопасности для продакшена
-SECURE_SSL_REDIRECT = True  # Перенаправление всех HTTP-запросов на HTTPS
-SECURE_HSTS_SECONDS = 31536000  # Включение HSTS (1 год)
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_BROWSER_XSS_FILTER = True
-X_FRAME_OPTIONS = 'DENY'
-
-CSRF_COOKIE_SECURE = True  # Только HTTPS
-CSRF_TRUSTED_ORIGINS = ['https://edms-ozqc.onrender.com']  # Обновлено для Render
+# Media files (закомментировано, так как Cloudinary используется вместо локального хранилища)
+# MEDIA_URL = '/media/'
+# MEDIA_ROOT = BASE_DIR / 'media'
 
 # Cloudinary настройки
 CLOUDINARY_STORAGE = {
@@ -157,3 +129,37 @@ DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 # Лимиты загрузки файлов
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5 MB
+# DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10 MB (закомментировано, если ранее использовалось)
+# FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10 MB (закомментировано, если ранее использовалось)
+
+LOGIN_URL = '/users/login/'
+
+# Session settings
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_AGE = 1209600  # 2 недели
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_SAVE_EVERY_REQUEST = True
+
+# Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.mail.ru'
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+EMAIL_HOST_USER = 'dsistema@internet.ru'
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = 'dsistema@internet.ru'
+
+# Security settings
+SECURE_SSL_REDIRECT = not DEBUG  # Отключено в режиме DEBUG для локального тестирования
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = 'DENY'
+
+CSRF_COOKIE_SECURE = True
+CSRF_TRUSTED_ORIGINS = ['https://edms-ozqc.onrender.com']
