@@ -18,7 +18,13 @@
                     </div>
                     <div class="mb-3">
                         <label for="{{ form.file.id_for_label }}" class="form-label fw-bold">Файл</label>
-                        <p>Текущий файл: {% if doc.file %}{{ doc.file.name }}{% else %}Не загружен{% endif %}</p>
+                        <p>Текущий файл:
+                            {% if doc.file %}
+                                <a href="{{ doc.file.url }}" download>{{ doc.file.name }}</a>
+                            {% else %}
+                                Не загружен
+                            {% endif %}
+                        </p>
                         {{ form.file }}
                         {% if form.file.errors %}
                             <div class="text-danger small">{{ form.file.errors }}</div>
@@ -51,9 +57,14 @@
                         {% endif %}
                     </div>
                     <div class="d-flex justify-content-between mt-4">
-                        <button type="submit" class="btn btn-primary-custom rounded-pill px-4">
-                            <i class="fas fa-save me-2"></i>Сохранить
-                        </button>
+                        <div>
+                            <button type="submit" class="btn btn-primary-custom rounded-pill px-4">
+                                <i class="fas fa-save me-2"></i>Сохранить
+                            </button>
+                            <button type="button" class="btn btn-danger-custom rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                <i class="fas fa-trash me-2"></i>Удалить
+                            </button>
+                        </div>
                         <a href="{% url 'my_documents' %}" class="btn btn-secondary-custom rounded-pill px-4">
                             <i class="fas fa-arrow-left me-2"></i>Отмена
                         </a>
@@ -63,10 +74,33 @@
         </div>
     </div>
 </div>
+
+<!-- Modal for Delete Confirmation -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Вы уверены, что хотите удалить документ "{{ doc.title }}"? Это действие нельзя отменить.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary-custom" data-bs-dismiss="modal">Отмена</button>
+                <form action="{% url 'document_delete' doc.id %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger-custom">Удалить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_css %}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
     .card {
         transition: all 0.3s ease;
@@ -106,6 +140,15 @@
         background-color: #2C3E50;
         transform: scale(1.05);
     }
+    .btn-danger-custom {
+        background-color: #dc3545;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    .btn-danger-custom:hover {
+        background-color: #c82333;
+        transform: scale(1.05);
+    }
     .recipient-chip {
         background-color: #2C3E50;
         color: white;
@@ -141,7 +184,7 @@
         .form-label {
             font-size: 0.9rem;
         }
-        .btn-primary-custom, .btn-secondary-custom {
+        .btn-primary-custom, .btn-secondary-custom, .btn-danger-custom {
             font-size: 0.9rem;
             padding: 8px 16px;
         }
@@ -155,6 +198,7 @@
 
 {% block extra_js %}
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('recipient-search');

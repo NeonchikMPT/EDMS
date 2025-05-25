@@ -81,18 +81,6 @@ def user_edit(request, user_id):
 
         # Обработка редактирования пользователя
         try:
-            # Проверка паролей
-            new_password = request.POST.get('new_password', '').strip()
-            confirm_password = request.POST.get('confirm_password', '').strip()
-            if new_password or confirm_password:
-                if new_password != confirm_password:
-                    messages.error(request, 'Пароли не совпадают.')
-                    return render(request, 'users/user_edit.html', {'user': user})
-                if len(new_password) < 8:
-                    messages.error(request, 'Пароль должен содержать минимум 8 символов.')
-                    return render(request, 'users/user_edit.html', {'user': user})
-                user.set_password(new_password)
-
             # Обновление остальных полей
             user.full_name = request.POST.get('full_name', '').strip()
             user.email_notifications = 'email_notifications' in request.POST
@@ -103,9 +91,21 @@ def user_edit(request, user_id):
             if 'avatar' in request.FILES:
                 user.avatar = request.FILES['avatar']
 
+            # Проверка паролей только если они были отправлены
+            new_password = request.POST.get('new_password', '').strip()
+            confirm_password = request.POST.get('confirm_password', '').strip()
+            if new_password and confirm_password:  # Проверяем, что оба поля непустые
+                if new_password != confirm_password:
+                    messages.error(request, 'Пароли не совпадают.')
+                    return render(request, 'users/user_edit.html', {'user': user})
+                if len(new_password) < 8:
+                    messages.error(request, 'Пароль должен содержать минимум 8 символов.')
+                    return render(request, 'users/user_edit.html', {'user': user})
+                user.set_password(new_password)
+
             user.save()
 
-            # Если редактируемый пользователь — это текущий пользователь, обновляем сессию
+            # Если редактируемый пользователь — это текущий пользователь и был изменен пароль
             if user == request.user and new_password:
                 user = authenticate(request, username=user.email, password=new_password)
                 if user:
@@ -113,6 +113,7 @@ def user_edit(request, user_id):
                     messages.success(request, 'Пользователь успешно обновлён.')
                 else:
                     messages.error(request, 'Ошибка при обновлении сессии после смены пароля.')
+                    return render(request, 'users/user_edit.html', {'user': user})
             else:
                 messages.success(request, 'Пользователь успешно обновлён.')
 
@@ -135,6 +136,7 @@ def user_delete(request, user_id):
         return redirect('user_list')
     return render(request, 'users/user_delete.html', {'user': user})
 
+
 @login_required
 def profile_view(request):
     if request.method == 'POST':
@@ -150,24 +152,45 @@ def profile_view(request):
         # Обработка обновления профиля
         form = UserProfileForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
-            user = form.save(commit=False)
-            new_password = form.cleaned_data.get('new_password')
-            if new_password:
-                user.set_password(new_password)
-            user.save()
-            print(f"Profile updated for {user.email}, email_notifications: {user.email_notifications}")
+            try:
+                user = form.save(commit=False)
 
-            # Аутентификация пользователя заново с новым паролем
-            user = authenticate(request, username=user.email, password=new_password)
-            if user:
-                login(request, user)  # Обновляем сессию
-                messages.success(request, 'Профиль обновлён')
-            else:
-                messages.error(request, 'Ошибка при обновлении сессии после смены пароля')
-            return redirect('profile')
+                # Проверка паролей только если они были отправлены
+                new_password = form.cleaned_data.get('new_password', '').strip()
+                confirm_password = form.cleaned_data.get('confirm_password', '').strip()
+                if new_password and confirm_password:  # Проверяем, что оба поля непустые
+                    if new_password != confirm_password:
+                        messages.error(request, 'Пароли не совпадают.')
+                        return render(request, 'users/profile.html', {'form': form})
+                    if len(new_password) < 8:
+                        messages.error(request, 'Пароль должен содержать минимум 8 символов.')
+                        return render(request, 'users/profile.html', {'form': form})
+                    user.set_password(new_password)
+
+                user.save()
+                print(f"Profile updated for {user.email}, email_notifications: {user.email_notifications}")
+
+                # Обновление сессии только если менялся пароль
+                if new_password:
+                    user = authenticate(request, username=user.email, password=new_password)
+                    if user:
+                        login(request, user)  # Обновляем сессию
+                        messages.success(request, 'Профиль обновлён')
+                    else:
+                        messages.error(request, 'Ошибка при обновлении сессии после смены пароля')
+                        return render(request, 'users/profile.html', {'form': form})
+                else:
+                    messages.success(request, 'Профиль обновлён')
+
+                return redirect('profile')
+            except Exception as e:
+                print(f"Error saving profile for {request.user.email}: {str(e)}")
+                messages.error(request, f'Ошибка при сохранении: {str(e)}')
+                return render(request, 'users/profile.html', {'form': form})
         else:
             print(f"Form validation failed for {request.user.email}: {form.errors}")
             messages.error(request, 'Ошибка при обновлении профиля: проверьте введённые данные')
+            return render(request, 'users/profile.html', {'form': form})
     else:
         form = UserProfileForm(instance=request.user)
     return render(request, 'users/profile.html', {'form': form})
