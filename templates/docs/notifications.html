@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block title %}Уведомления{% endblock %}
+{% block content %}
+<div class="container mt-5 pt-4">
+    <h2 class="mb-4 text-center text-primary fw-bold" style="text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);">Уведомления</h2>
+    <div class="card shadow-lg rounded-4 border-0 overflow-hidden">
+        <div class="card-body p-4 bg-light">
+            {% if notifications %}
+                <div class="notification-container" id="notification-list">
+                    {% for notification in notifications %}
+                        <div class="card mb-3 border-0 shadow-sm notification-item {% if not notification.is_read %}bg-info bg-opacity-10{% endif %}">
+                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="card-title mb-1 text-dark">Документ: {{ notification.document.title }}</h5>
+                                    <p class="card-text mb-0 text-muted small">Статус: {{ notification.document.get_status_display }}<br>Дата: {{ notification.created_at|date:"d.m.Y H:i" }}</p>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    {% if not notification.is_read %}
+                                        <button class="btn btn-sm btn-primary rounded-pill mark-read-btn" data-notification-id="{{ notification.id }}">
+                                            <i class="fas fa-check"></i> Прочитать
+                                        </button>
+                                    {% endif %}
+                                    <a href="{% url 'received_documents' %}" class="btn btn-sm btn-outline-primary rounded-pill">
+                                        <i class="fas fa-arrow-right"></i> Перейти
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
+                    <p class="text-muted lead">Нет уведомлений</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="text-center mt-4">
+        <a href="/" class="btn btn-secondary btn-lg rounded-pill px-4">
+            <i class="fas fa-arrow-left"></i> Назад к дашборду
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const markReadButtons = document.querySelectorAll('.mark-read-btn');
+        markReadButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const notificationId = button.getAttribute('data-notification-id');
+                const listItem = button.closest('.notification-item');
+
+                fetch(`/docs/notifications/read/${notificationId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        listItem.classList.remove('bg-info', 'bg-opacity-10');
+                        listItem.classList.add('bg-light');
+                        button.remove();
+                        listItem.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                        listItem.style.transform = 'scale(1.02)';
+                        setTimeout(() => {
+                            listItem.style.transform = 'scale(1)';
+                        }, 200);
+                    }
+                })
+                .catch(err => console.log('Error:', err));
+            });
+        });
+    });
+</script>
+{% block extra_css %}
+<style>
+    .notification-container {
+        max-height: 70vh;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #2C3E50 #f1f1f1;
+    }
+    .notification-container::-webkit-scrollbar {
+        width: 8px;
+    }
+    .notification-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    .notification-container::-webkit-scrollbar-thumb {
+        background-color: #2C3E50;
+        border-radius: 4px;
+        border: 2px solid #f1f1f1;
+    }
+    .notification-item {
+        transition: all 0.3s ease;
+        border-radius: 10px;
+    }
+    .notification-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+    .card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    .btn-primary, .btn-outline-primary {
+        transition: all 0.3s ease;
+    }
+    .btn-primary:hover {
+        background-color: #233240;
+        transform: scale(1.05);
+    }
+    .btn-outline-primary:hover {
+        background-color: #2C3E50;
+        color: #fff;
+        transform: scale(1.05);
+    }
+    .btn-lg {
+        font-size: 1rem;
+        padding: 10px 20px;
+    }
+    @media (max-width: 768px) {
+        .notification-container {
+            max-height: 50vh;
+        }
+        .card-body {
+            padding: 1.5rem;
+        }
+        .btn-lg {
+            font-size: 0.9rem;
+            padding: 8px 16px;
+        }
+    }
+</style>
+{% endblock %}
+{% endblock %}

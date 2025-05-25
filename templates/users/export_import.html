@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% block title %}Экспорт и импорт данных{% endblock %}
+{% block content %}
+<style>
+    /* Контейнер для страницы */
+    .export-import-container {
+        max-width: 800px; /* Ограничиваем ширину для удобства чтения */
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Заголовки */
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2C3E50;
+        text-align: center;
+        margin-bottom: 30px;
+        position: relative;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 500;
+        color: #2C3E50;
+        margin-bottom: 20px;
+        border-left: 4px solid #2C3E50;
+        padding-left: 10px;
+    }
+
+    /* Карточки для форм */
+    .card {
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        margin-bottom: 30px;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-body {
+        padding: 25px;
+    }
+
+    /* Стили для форм */
+    .form-select, .form-control {
+        border-radius: 5px;
+        border: 1px solid #ced4da;
+        padding: 10px;
+        font-size: 0.95rem;
+        transition: border-color 0.3s ease;
+    }
+
+    .form-select:focus, .form-control:focus {
+        border-color: #2C3E50;
+        box-shadow: 0 0 5px rgba(44, 62, 80, 0.2);
+        outline: none;
+    }
+
+    /* Кнопки */
+    .btn-primary-custom {
+        background-color: #2C3E50;
+        border-color: #2C3E50;
+        color: #fff;
+        padding: 10px 20px;
+        border-radius: 5px;
+        font-weight: 500;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .btn-primary-custom:hover {
+        background-color: #34495E;
+        border-color: #34495E;
+        transform: scale(1.05);
+    }
+
+    .btn-secondary-custom {
+        background-color: #6c757d;
+        border-color: #6c757d;
+        color: #fff;
+        padding: 10px 20px;
+        border-radius: 5px;
+        font-weight: 500;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .btn-secondary-custom:hover {
+        background-color: #5a6268;
+        border-color: #5a6268;
+        transform: scale(1.05);
+    }
+
+    /* Иконки */
+    .icon {
+        margin-right: 8px;
+    }
+
+    /* Адаптивность */
+    @media (max-width: 576px) {
+        .export-import-container {
+            padding: 15px;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+        }
+
+        .card-body {
+            padding: 15px;
+        }
+
+        .btn-primary-custom, .btn-secondary-custom {
+            padding: 8px 15px;
+            font-size: 0.9rem;
+        }
+    }
+</style>
+
+<div class="container mt-4 export-import-container">
+    <h1 class="page-title">Экспорт и импорт данных</h1>
+
+    <!-- Экспорт -->
+    <div class="card">
+        <div class="card-body">
+            <h2 class="section-title"><i class="fas fa-download icon"></i>Экспорт</h2>
+            <form method="post" class="mb-4">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <select name="export_type" class="form-select">
+                        <option value="users_csv">Экспорт пользователей (CSV)</option>
+                        <option value="documents_csv">Экспорт документов (CSV)</option>
+                        <option value="users_sql">Экспорт пользователей (SQL)</option>
+                        <option value="documents_sql">Экспорт документов (SQL)</option>
+                        <option value="all_sql">Экспорт всей базы данных (SQL)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary-custom"><i class="fas fa-file-export icon"></i>Экспортировать</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Импорт -->
+    <div class="card">
+        <div class="card-body">
+            <h2 class="section-title"><i class="fas fa-upload icon"></i>Импорт</h2>
+            <form method="post" enctype="multipart/form-data" class="mb-4">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <select name="export_type" id="import-type" class="form-select">
+                        <option value="import_users_csv">Импорт пользователей (CSV)</option>
+                        <option value="import_documents_csv">Импорт документов (CSV)</option>
+                        <option value="import_users_sql">Импорт пользователей (SQL)</option>
+                        <option value="import_documents_sql">Импорт документов (SQL)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <input type="file" name="csv_file" id="import-file" accept=".csv" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-primary-custom"><i class="fas fa-file-import icon"></i>Импортировать</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Кнопка "Назад" -->
+    <p class="text-center">
+        <a href="{% url 'user_list' %}" class="btn btn-secondary-custom"><i class="fas fa-arrow-left icon"></i>Назад к списку пользователей</a>
+    </p>
+</div>
+
+<script>
+    document.getElementById('import-type').addEventListener('change', function() {
+        const importType = this.value;
+        const fileInput = document.getElementById('import-file');
+        if (importType === 'import_users_sql' || importType === 'import_documents_sql') {
+            fileInput.name = 'sql_file';
+            fileInput.accept = '.sql';
+        } else {
+            fileInput.name = 'csv_file';
+            fileInput.accept = '.csv';
+        }
+    });
+</script>
+{% endblock %}

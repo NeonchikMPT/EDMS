@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block title %}История документа{% endblock %}
+{% block content %}
+<div class="container mt-5 pt-4">
+    <h2 class="mb-4 text-center text-primary fw-bold document-title" style="text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);">
+        История: {{ doc.title }}
+    </h2>
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-4">
+            {% if logs %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr class="bg-primary text-white">
+                                <th scope="col"><i class="fas fa-clock me-2"></i>Дата</th>
+                                <th scope="col"><i class="fas fa-user me-2"></i>Пользователь</th>
+                                <th scope="col"><i class="fas fa-tasks me-2"></i>Действие</th>
+                                <th scope="col"><i class="fas fa-comment me-2"></i>Комментарий</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                            <tr class="log-row">
+                                <td>{{ log.timestamp|date:"Y-m-d H:i" }}</td>
+                                <td>{{ log.user.email }}</td>
+                                <td>
+                                    <i class="fas {% if log.action == 'create' %}fa-plus-circle{% elif log.action == 'sign' %}fa-signature{% elif log.action == 'edit' %}fa-edit{% endif %} me-2"></i>
+                                    {{ log.get_action_display }}
+                                </td>
+                                <td>{{ log.comment }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                    <p class="text-muted lead">Нет записей в истории</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        <a href="{% url 'my_documents' %}" class="btn btn-secondary btn-lg rounded-pill px-4">
+            <i class="fas fa-arrow-left me-2"></i>Назад
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .document-title {
+        font-size: 2rem;
+        color: #2C3E50;
+    }
+    .card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        transition: all 0.3s ease;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+    .table {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .table thead th {
+        background-color: #2C3E50;
+        border: none;
+        font-weight: 600;
+    }
+    .table tbody tr {
+        transition: background-color 0.3s ease;
+    }
+    .log-row:hover {
+        background-color: #f1f3f5;
+    }
+    .table td, .table th {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+    .btn-secondary {
+        background-color: #6c757d;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    .btn-secondary:hover {
+        background-color: #2C3E50;
+        transform: scale(1.05);
+    }
+    @media (max-width: 768px) {
+        .document-title {
+            font-size: 1.5rem;
+        }
+        .card-body {
+            padding: 1.5rem;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        .table td, .table th {
+            font-size: 0.9rem;
+            padding: 0.75rem;
+        }
+        .btn-lg {
+            font-size: 0.9rem;
+            padding: 8px 16px;
+        }
+    }
+</style>
+{% endblock %}

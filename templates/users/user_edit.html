@@ -1,0 +1,483 @@
+{% extends 'base.html' %}
+{% block title %}Редактировать пользователя{% endblock %}
+{% block content %}
+<style>
+    .profile-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .profile-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2C3E50;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .profile-content {
+        display: flex;
+        gap: 30px;
+        flex-wrap: wrap;
+    }
+
+    .avatar-section {
+        flex: 1;
+        min-width: 250px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .avatar-wrapper {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+
+    .avatar-wrapper img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .avatar-wrapper .default-icon {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #fff;
+        font-size: 3rem;
+        color: #2C3E50;
+    }
+
+    .avatar-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-action {
+        padding: 8px 15px;
+        border-radius: 5px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .btn-edit {
+        background-color: #2C3E50;
+        color: #fff;
+        border: none;
+    }
+
+    .btn-edit:hover {
+        background-color: #34495E;
+        transform: scale(1.05);
+    }
+
+    .btn-delete {
+        background-color: #dc3545;
+        color: #fff;
+        border: none;
+    }
+
+    .btn-delete:hover {
+        background-color: #c82333;
+        transform: scale(1.05);
+    }
+
+    .btn-action i {
+        margin-right: 5px;
+    }
+
+    .form-section {
+        flex: 2;
+        min-width: 300px;
+    }
+
+    .profile-card {
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        padding: 25px;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: #2C3E50;
+    }
+
+    .form-control {
+        border-radius: 5px;
+        border: 1px solid #ced4da;
+        padding: 10px;
+        font-size: 0.95rem;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .form-control:focus {
+        border-color: #2C3E50;
+        box-shadow: 0 0 5px rgba(44, 62, 80, 0.2);
+        outline: none;
+    }
+
+    .invalid-feedback {
+        font-size: 0.875rem;
+    }
+
+    .form-select {
+        border-radius: 5px;
+        border: 1px solid #ced4da;
+        padding: 10px;
+        font-size: 0.95rem;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .form-select:focus {
+        border-color: #2C3E50;
+        box-shadow: 0 0 5px rgba(44, 62, 80, 0.2);
+        outline: none;
+    }
+
+    .form-check-switch {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-check-input {
+        width: 40px;
+        height: 20px;
+        margin: 0;
+    }
+
+    .form-check-label {
+        font-weight: 500;
+        color: #2C3E50;
+    }
+
+    .form-actions {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-top: 30px;
+    }
+
+    .btn-primary-custom {
+        background-color: #2C3E50;
+        border-color: #2C3E50;
+        color: #fff;
+        padding: 10px 20px;
+        border-radius: 5px;
+        font-weight: 500;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .btn-primary-custom:hover {
+        background-color: #34495E;
+        border-color: #34495E;
+        transform: scale(1.05);
+    }
+
+    .btn-secondary-custom {
+        background-color: #6c757d;
+        border-color: #6c757d;
+        color: #fff;
+        padding: 10px 20px;
+        border-radius: 5px;
+        font-weight: 500;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .btn-secondary-custom:hover {
+        background-color: #5a6268;
+        border-color: #5a6268;
+        transform: scale(1.05);
+    }
+
+    #password-error {
+        border-radius: 5px;
+        transition: opacity 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+        .profile-content {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .avatar-section {
+            margin-bottom: 20px;
+        }
+
+        .form-section {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .profile-container {
+            padding: 15px;
+        }
+
+        .profile-title {
+            font-size: 1.5rem;
+        }
+
+        .avatar-wrapper {
+            width: 120px;
+            height: 120px;
+        }
+
+        .avatar-wrapper .default-icon {
+            font-size: 2.5rem;
+        }
+
+        .profile-card {
+            padding: 15px;
+        }
+
+        .form-control, .form-select {
+            font-size: 0.9rem;
+        }
+
+        .btn-action, .btn-primary-custom, .btn-secondary-custom {
+            padding: 8px 15px;
+            font-size: 0.9rem;
+        }
+    }
+
+    /* Toggle password styles */
+    .toggle-password {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        color: #7f8c8d;
+        font-size: 1.2rem;
+        z-index: 10;
+        transition: color 0.3s ease;
+    }
+
+    .toggle-password:hover {
+        color: #2C3E50;
+    }
+</style>
+
+<div class="container mt-4 profile-container">
+    <h1 class="profile-title">Редактировать пользователя: {{ user.email }}</h1>
+
+    <div class="profile-content">
+        <!-- Левая колонка: Аватарка и кнопки -->
+        <div class="avatar-section">
+            <div class="avatar-wrapper">
+                {% if user.avatar and user.avatar.url %}
+                    <img src="{{ user.avatar.url }}" alt="Аватар" id="avatar-preview">
+                {% else %}
+                    <div class="default-icon" id="avatar-preview">
+                        <i class="fas fa-user"></i>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="avatar-actions">
+                <button type="button" class="btn btn-edit" onclick="document.getElementById('id_avatar').click();">
+                    <i class="fas fa-edit"></i> Изменить
+                </button>
+                {% if user.avatar %}
+                <form method="post" action="{% url 'user_edit' user.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="delete_avatar" value="true">
+                    <button type="submit" class="btn btn-delete">
+                        <i class="fas fa-trash"></i> Удалить
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Правая колонка: Форма -->
+        <div class="form-section">
+            <div class="profile-card">
+                <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="profile-form">
+                    {% csrf_token %}
+                    <!-- Скрытое поле для загрузки аватарки -->
+                    <input type="file" name="avatar" id="id_avatar" style="display: none;" accept="image/*">
+
+                    <!-- Поле для ФИО -->
+                    <div class="mb-3">
+                        <label for="id_full_name" class="form-label">ФИО</label>
+                        <input type="text" name="full_name" id="id_full_name" class="form-control" value="{{ user.full_name|default_if_none:'' }}" required>
+                        <div class="invalid-feedback">Пожалуйста, введите ваше ФИО.</div>
+                    </div>
+
+                    <!-- Выбор роли -->
+                    <div class="mb-3">
+                        <label for="id_role" class="form-label">Роль</label>
+                        <select name="role" id="id_role" class="form-control form-select" required>
+                            <option value="staff" {% if user.role == 'staff' %}selected{% endif %}>Сотрудник</option>
+                            <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Администратор</option>
+                        </select>
+                        <div class="invalid-feedback">Пожалуйста, выберите роль.</div>
+                    </div>
+
+                    <!-- Тумблер для уведомлений -->
+                    <div class="mb-3 form-check-switch">
+                        <input type="checkbox" name="email_notifications" id="id_email_notifications" class="form-check-input" {% if user.email_notifications %}checked{% endif %}>
+                        <label for="id_email_notifications" class="form-check-label">Получать уведомления на почту</label>
+                    </div>
+
+                    <!-- Поля для изменения пароля -->
+                    <div class="mb-3 position-relative">
+                        <label for="id_new_password" class="form-label">Новый пароль</label>
+                        <div class="input-group">
+                            <input type="password" name="new_password" id="id_new_password" class="form-control" placeholder="Введите новый пароль">
+                            <span class="toggle-password"><i class="fas fa-eye"></i></span>
+                        </div>
+                    </div>
+                    <div class="mb-3 position-relative" style="display: none;">
+                        <label for="id_confirm_password" class="form-label">Подтвердите пароль</label>
+                        <div class="input-group">
+                            <input type="password" name="confirm_password" id="id_confirm_password" class="form-control" placeholder="Подтвердите пароль">
+                        </div>
+                    </div>
+
+                    <!-- Сообщение об ошибке пароля -->
+                    <div id="password-error" class="alert alert-danger mt-3" role="alert" style="display: none; opacity: 0; transition: opacity 0.3s ease;">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Кнопки "Сохранить" и "Назад" -->
+    <div class="form-actions">
+        <button type="submit" form="profile-form" id="save-button" class="btn btn-primary-custom">Сохранить</button>
+        <a href="{% url 'user_list' %}" class="btn btn-secondary-custom">Назад</a>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const avatarInput = document.getElementById('id_avatar');
+        const avatarPreview = document.getElementById('avatar-preview');
+        const newPasswordField = document.getElementById('id_new_password');
+        const confirmPasswordField = document.querySelector('input[name="confirm_password"]').parentElement.parentElement;
+        const confirmPasswordInput = document.getElementById('id_confirm_password');
+        const saveButton = document.getElementById('save-button');
+        const passwordError = document.getElementById('password-error');
+        const form = document.getElementById('profile-form');
+        const togglePassword = document.querySelector('.toggle-password');
+
+        // Предварительный просмотр аватара
+        avatarInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    avatarPreview.parentElement.innerHTML = `<img src="${e.target.result}" alt="Аватар" id="avatar-preview">`;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                avatarPreview.parentElement.innerHTML = `{% if user.avatar and user.avatar.url %}
+                    <img src="{{ user.avatar.url }}" alt="Аватар" id="avatar-preview">
+                {% else %}
+                    <div class="default-icon" id="avatar-preview">
+                        <i class="fas fa-user"></i>
+                    </div>
+                {% endif %}`;
+            }
+        });
+
+        // Toggle password visibility
+        if (togglePassword) {
+            togglePassword.addEventListener('click', function() {
+                const type = newPasswordField.getAttribute('type') === 'password' ? 'text' : 'password';
+                newPasswordField.setAttribute('type', type);
+                if (confirmPasswordInput) {
+                    confirmPasswordInput.setAttribute('type', type);
+                }
+                togglePassword.innerHTML = type === 'text' ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+                console.log('Toggled password visibility. Type:', type);
+            });
+        }
+
+        // Валидация паролей
+        function updatePasswordFields() {
+            const newPassword = newPasswordField.value.trim();
+            if (newPassword !== '') {
+                confirmPasswordField.style.display = 'block';
+                checkPasswordsMatch();
+            } else {
+                confirmPasswordField.style.display = 'none';
+                confirmPasswordInput.value = '';
+                passwordError.style.display = 'none';
+                passwordError.style.opacity = 0;
+                saveButton.disabled = false;
+            }
+        }
+
+        function checkPasswordsMatch() {
+            const newPassword = newPasswordField.value.trim();
+            const confirmPassword = confirmPasswordInput.value.trim();
+            let errorMessage = '';
+
+            if (newPassword !== '' && confirmPassword !== '') {
+                if (newPassword.length < 8) {
+                    errorMessage += 'Пароль должен содержать минимум 8 символов. ';
+                }
+                if (!/[A-Z]/.test(newPassword)) {
+                    errorMessage += 'Пароль должен содержать хотя бы одну заглавную букву. ';
+                }
+                if (!/[a-z]/.test(newPassword)) {
+                    errorMessage += 'Пароль должен содержать хотя бы одну строчную букву. ';
+                }
+                if (!/[0-9]/.test(newPassword)) {
+                    errorMessage += 'Пароль должен содержать хотя бы одну цифру. ';
+                }
+                if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
+                    errorMessage += 'Пароль должен содержать хотя бы один специальный символ (например, !, @, #). ';
+                }
+                if (newPassword !== confirmPassword) {
+                    errorMessage += 'Пароли не совпадают. ';
+                }
+            }
+
+            if (errorMessage) {
+                passwordError.textContent = errorMessage.trim();
+                passwordError.style.display = 'block';
+                passwordError.style.opacity = 1;
+                saveButton.disabled = true;
+            } else {
+                passwordError.style.display = 'none';
+                passwordError.style.opacity = 0;
+                saveButton.disabled = false;
+            }
+        }
+
+        newPasswordField.addEventListener('input', updatePasswordFields);
+        confirmPasswordInput.addEventListener('input', checkPasswordsMatch);
+        updatePasswordFields();
+
+        // Валидация формы перед отправкой
+        form.addEventListener('submit', function(event) {
+            const newPassword = newPasswordField.value.trim();
+            const confirmPassword = confirmPasswordInput.value.trim();
+
+            if (newPassword !== '' && (newPassword !== confirmPassword || newPassword.length < 8)) {
+                event.preventDefault();
+                checkPasswordsMatch();
+            } else if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        });
+    });
+</script>
+{% endblock %}

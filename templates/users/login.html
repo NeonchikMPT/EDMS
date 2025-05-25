@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% block title %}Вход{% endblock %}
+{% block extra_head %}
+<style>
+    .center-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        width: 100%;
+    }
+
+    .auth-card {
+        border: none;
+        border-radius: 20px;
+        background-color: #fff;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+        padding: 20px;
+        max-height: 500px;
+        animation: fadeIn 0.8s ease-in-out;
+    }
+
+    .auth-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2C3E50;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: #2C3E50;
+    }
+
+    .form-control {
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 1rem;
+        border: 1px solid #ced4da;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        height: 48px;
+    }
+
+    .form-control:focus {
+        border-color: #2C3E50;
+        box-shadow: 0 0 8px rgba(44, 62, 80, 0.2);
+        outline: none;
+    }
+
+    .input-group {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-group-text {
+        border-radius: 10px 0 0 10px;
+        border: 1px solid #ced4da;
+        border-right: none;
+        color: #7f8c8d;
+        background-color: #f8f9fa;
+        padding: 12px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-group .form-control {
+        border-radius: 0 10px 10px 0;
+        border-left: none;
+        flex: 1;
+    }
+
+    .toggle-password {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        color: #7f8c8d;
+        font-size: 1.2rem;
+        z-index: 10;
+        transition: color 0.3s ease;
+        height: 48px;
+        display: flex;
+        align-items: center;
+    }
+
+    .toggle-password:hover {
+        color: #2C3E50;
+    }
+
+    .password-field {
+        padding-right: 40px;
+        border-radius: 0 10px 10px 0 !important;
+        border-left: none;
+    }
+
+    .email-field {
+        border-radius: 0 10px 10px 0 !important;
+        border-left: none;
+    }
+
+    .btn-primary-custom {
+        background-color: #2C3E50;
+        border: none;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: #fff;
+        transition: background-color 0.3s ease, transform 0.1s ease;
+    }
+
+    .btn-primary-custom:hover {
+        background-color: #34495E;
+        transform: translateY(-2px);
+        color: #fff; /* Фиксируем цвет текста при наведении */
+    }
+
+    .text-primary-custom {
+        color: #2C3E50;
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+
+    .text-primary-custom:hover {
+        color: #34495E;
+        text-decoration: underline;
+    }
+
+    .text-muted {
+        color: #7f8c8d;
+    }
+</style>
+{% endblock %}
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const passwordInput = document.getElementById('id_password');
+        const togglePassword = document.querySelector('.toggle-password');
+
+        if (passwordInput && togglePassword) {
+            togglePassword.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+
+                if (type === 'text') {
+                    togglePassword.innerHTML = '<i class="fas fa-eye-slash"></i>';
+                } else {
+                    togglePassword.innerHTML = '<i class="fas fa-eye"></i>';
+                }
+
+                console.log('Toggled password visibility. Type:', type);
+            });
+        } else {
+            console.error('Password input or toggle element not found.');
+        }
+    });
+</script>
+{% endblock %}
+{% block content %}
+<div class="center-container">
+    <div class="auth-card">
+        <div class="card-body">
+            <div class="text-center mb-4">
+                <h2 class="auth-title">Вход</h2>
+                <p class="text-muted">Пожалуйста, войдите в свой аккаунт</p>
+            </div>
+            {% if form.errors %}
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <div class="message error-message">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            {% if field.name == 'email' and 'Пользователь с таким email не найден' in error or 'Неверные данные' in error %}
+                                Проверьте email или пароль.
+                            {% else %}
+                                {{ error }}
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                    <div class="message error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        {{ error }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="id_email" class="form-label">Email</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                        <input type="text" name="email" id="id_email" class="form-control email-field" placeholder="Введите ваш email" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="id_password" class="form-label">Пароль</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                        <input type="password" name="password" id="id_password" class="form-control password-field" placeholder="Введите ваш пароль" required>
+                        <span class="toggle-password"><i class="fas fa-eye"></i></span>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary-custom w-100 mt-3">Войти</button>
+            </form>
+            <div class="mt-4 text-center">
+                <p><a href="{% url 'password_reset_request' %}" class="text-primary-custom">Забыли пароль?</a></p>
+                <p>Нет аккаунта? <a href="{% url 'register' %}" class="text-primary-custom">Регистрация</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

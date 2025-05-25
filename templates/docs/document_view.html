@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5 pt-4">
+    <h2 class="mb-4 text-center text-primary fw-bold" style="text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);">Документ: {{ document.title }}</h2>
+    <div class="card shadow-lg rounded-4 border-0 overflow-hidden">
+        <div class="card-body p-4 bg-light">
+            <div class="row">
+                <div class="col-12 col-md-6">
+                    <p class="card-text mb-2"><strong>Статус:</strong> {{ document.get_status_display }}</p>
+                    <p class="card-text mb-2"><strong>Владелец:</strong> {{ document.owner.full_name }} ({{ document.owner.email }})</p>
+                    <p class="card-text mb-2"><strong>Получатели:</strong>
+                        {% for recipient in document.recipients.all %}
+                            {{ recipient.full_name }} ({{ recipient.email }}){% if not forloop.last %}, {% endif %}
+                        {% empty %}
+                            Нет получателей
+                        {% endfor %}
+                    </p>
+                    <p class="card-text mb-2"><strong>Создан:</strong> {{ document.created_at|date:"d.m.Y H:i" }}</p>
+                    <p class="card-text mb-3"><strong>Файл:</strong> <a href="{{ document.file.url }}" target="_blank">{{ document.file.name }}</a></p>
+                    {% if can_edit %}
+                        <a href="{% url 'document_edit' document.id %}" class="btn btn-primary-custom rounded-pill px-4 mt-3">
+                            <i class="fas fa-edit me-2"></i>Редактировать
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="mb-3">
+                        <label for="comment" class="form-label fw-bold">Добавить комментарий</label>
+                        <textarea class="form-control" id="comment" rows="4" placeholder="Введите ваш комментарий..."></textarea>
+                    </div>
+                    <button class="btn btn-primary rounded-pill" id="submit-comment">
+                        <i class="fas fa-paper-plane"></i> Отправить комментарий
+                    </button>
+                    <h5 class="mt-4 mb-3 fw-bold">История комментариев</h5>
+                    {% if comments %}
+                        <div class="list-group notification-list">
+                            {% for log in comments %}
+                                <div class="list-group-item p-3">
+                                    <p class="mb-1"><strong>{{ log.user.full_name }} ({{ log.user.email }})</strong> — {{ log.timestamp|date:"d.m.Y H:i" }}</p>
+                                    <p class="mb-0">{{ log.comment }}</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">Комментариев пока нет.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="text-center mt-4">
+        <a href="{% url 'received_documents' %}" class="btn btn-secondary btn-lg rounded-pill px-4">
+            <i class="fas fa-arrow-left"></i> Назад
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const submitButton = document.getElementById('submit-comment');
+    submitButton.addEventListener('click', function() {
+        const comment = document.getElementById('comment').value.trim();
+        if (!comment) {
+            alert('Пожалуйста, введите комментарий.');
+            return;
+        }
+        const docId = {{ document.id }};
+        fetch(`/docs/comment/${docId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ comment: comment })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message success-message';
+                messageDiv.innerHTML = '<i class="fas fa-check-circle"></i> Комментарий отправлен, автор уведомлен!';
+                document.querySelector('main').prepend(messageDiv);
+                setTimeout(() => messageDiv.classList.add('auto-fade'), 100);
+                setTimeout(() => messageDiv.remove(), 5600);
+                document.getElementById('comment').value = '';
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        })
+        .catch(err => console.log('Error:', err));
+    });
+});
+</script>
+{% endblock %}

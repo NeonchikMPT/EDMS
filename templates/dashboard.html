@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+{% block title %}Главная{% endblock %}
+{% block content %}
+<style>
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 15px; /* Уменьшаем отступы */
+    }
+
+    .dashboard-title {
+        font-size: 1.8rem; /* Уменьшаем размер заголовка */
+        font-weight: 700;
+        color: #2C3E50;
+        text-align: center;
+        margin-bottom: 20px; /* Уменьшаем отступ */
+    }
+
+    .dashboard-card {
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        min-height: 200px; /* Уменьшаем минимальную высоту */
+        display: flex;
+        flex-direction: column;
+    }
+
+    .dashboard-card .card-body {
+        flex: 1;
+        padding: 15px; /* Уменьшаем внутренние отступы */
+    }
+
+    .dashboard-card .card-title {
+        font-size: 1.3rem; /* Уменьшаем размер заголовка карточки */
+        font-weight: 600;
+        color: #2C3E50;
+        margin-bottom: 10px; /* Уменьшаем отступ */
+    }
+
+    .stats-list .list-group-item {
+        border: none;
+        padding: 8px 0; /* Уменьшаем отступы */
+        font-size: 0.95rem; /* Уменьшаем шрифт */
+        color: #2C3E50;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .notification-list .list-group-item {
+        border: none;
+        padding: 8px 0; /* Уменьшаем отступы */
+        font-size: 0.9rem; /* Уменьшаем шрифт */
+        transition: background-color 0.2s ease;
+    }
+
+    .notification-list .list-group-item:hover {
+        background-color: #f1f3f5;
+    }
+
+    .notification-list .list-group-item-info {
+        background-color: #e7f3ff;
+    }
+
+    .notification-list .list-group-item span {
+        color: #2C3E50;
+    }
+
+    .btn-primary-custom {
+        background-color: #2C3E50;
+        border-color: #2C3E50;
+        color: #fff;
+        padding: 4px 8px; /* Уменьшаем размер кнопок */
+        font-size: 0.85rem;
+        border-radius: 5px;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .btn-primary-custom:hover {
+        background-color: #34495E;
+        border-color: #34495E;
+        transform: scale(1.05);
+    }
+
+    .btn-outline-primary-custom {
+        border-color: #2C3E50;
+        color: #2C3E50;
+        padding: 4px 8px; /* Уменьшаем размер кнопок */
+        font-size: 0.85rem;
+        border-radius: 5px;
+        transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
+    }
+
+    .btn-outline-primary-custom:hover {
+        background-color: #2C3E50;
+        color: #fff;
+        transform: scale(1.05);
+    }
+
+    .chart-card {
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        padding: 15px; /* Уменьшаем внутренние отступы */
+    }
+
+    .no-notifications {
+        text-align: center;
+        color: #6c757d;
+        font-size: 0.9rem; /* Уменьшаем шрифт */
+        margin: 15px 0; /* Уменьшаем отступы */
+    }
+
+    .no-notifications i {
+        font-size: 1.2rem; /* Уменьшаем размер иконки */
+        color: #ced4da;
+        margin-bottom: 8px; /* Уменьшаем отступ */
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-container {
+            padding: 10px;
+        }
+        .dashboard-title {
+            font-size: 1.3rem;
+        }
+        .dashboard-card {
+            min-height: 180px;
+        }
+        .dashboard-card .card-title {
+            font-size: 1.1rem;
+        }
+        .stats-list .list-group-item,
+        .notification-list .list-group-item {
+            font-size: 0.85rem;
+        }
+        .btn-primary-custom,
+        .btn-outline-primary-custom {
+            font-size: 0.8rem;
+            padding: 3px 6px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .notification-list .list-group-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px; /* Уменьшаем отступ */
+        }
+        .notification-list .list-group-item .d-flex {
+            width: 100%;
+            justify-content: space-between;
+        }
+    }
+</style>
+
+<div class="dashboard-container">
+    <h2 class="dashboard-title">Добро пожаловать, {{ user.full_name }}</h2>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <div class="card dashboard-card">
+                <div class="card-body">
+                    <h3 class="card-title">Статистика документов</h3>
+                    <ul class="list-group stats-list">
+                        <li class="list-group-item">
+                            <span>Входящие документы:</span> {{ incoming_count }}
+                        </li>
+                        <li class="list-group-item">
+                            <span>Мои документы:</span> {{ sent_count }}
+                        </li>
+                        <li class="list-group-item">
+                            <span>Подписано:</span> {{ signed_count }}
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="card dashboard-card">
+                <div class="card-body">
+                    <h3 class="card-title">Последние уведомления</h3>
+                    {% if recent_notifs or comment_logs %}
+                        <ul class="list-group notification-list" id="notification-list">
+                            {% for notif in recent_notifs %}
+                                <li class="list-group-item {% if not notif.is_read %}list-group-item-info{% endif %} d-flex justify-content-between align-items-center py-2" data-notification-id="{{ notif.id }}">
+                                    <span>{{ notif.document.title }} — {{ notif.document.get_status_display }} — {{ notif.created_at|date:"d.m.Y H:i" }}</span>
+                                    <div>
+                                        {% if not notif.is_read %}
+                                            <button class="btn btn-sm btn-primary-custom me-2 mark-read-btn" data-notification-id="{{ notif.id }}">Прочитать</button>
+                                        {% endif %}
+                                        <a href="{% url 'received_documents' %}" class="btn btn-sm btn-outline-primary-custom">Открыть</a>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                            {% for log in comment_logs %}
+                                <li class="list-group-item list-group-item-info d-flex justify-content-between align-items-center py-2" data-log-id="{{ log.id }}">
+                                    <span>Комментарий к {{ log.document.title }} от {{ log.user.full_name }} — {{ log.timestamp|date:"d.m.Y H:i" }}</span>
+                                    <div>
+                                        <a href="{% url 'document_view' log.document.id %}" class="btn btn-sm btn-outline-primary-custom">Просмотреть</a>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="no-notifications">
+                            <i class="fas fa-bell-slash"></i>
+                            <p>Нет новых уведомлений</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card chart-card">
+                <div class="card-body">
+                    <h3 class="card-title">
+                        {% if user.role == 'admin' %}
+                            Распределение всех документов по статусам
+                        {% else %}
+                            Распределение ваших документов
+                        {% endif %}
+                    </h3>
+                    <div style="position: relative; height: 300px;"> <!-- Уменьшаем высоту графика -->
+                        <canvas id="documentChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('documentChart').getContext('2d');
+    const chartData = {
+        labels: {{ chart_data.labels|safe }},
+        datasets: [{
+            data: {{ chart_data.data|safe }},
+            backgroundColor: {{ chart_data.colors|safe }},
+            borderWidth: 1,
+            hoverOffset: 20
+        }]
+    };
+
+    new Chart(ctx, {
+        type: 'pie',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right', labels: { font: { size: 12 }, color: '#333' } }, // Уменьшаем размер легенды
+                title: {
+                    display: true,
+                    text: {% if user.role == 'admin' %}'Распределение всех документов по статусам'{% else %}'Распределение ваших документов'{% endif %},
+                    font: { size: 16, weight: '500' } // Уменьшаем размер заголовка
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            let value = context.raw || 0;
+                            let total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            let percentage = total ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    },
+                    backgroundColor: 'rgba(44, 62, 80, 0.9)',
+                    titleFont: { size: 12 },
+                    bodyFont: { size: 10 }
+                },
+                animation: { duration: 1500, easing: 'easeInOutQuart' }
+            }
+        }
+    });
+
+    const markReadButtons = document.querySelectorAll('.mark-read-btn');
+    markReadButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const notificationId = button.getAttribute('data-notification-id');
+            fetch(`/docs/notifications/read/${notificationId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const listItem = button.closest('li');
+                    listItem.classList.remove('list-group-item-info');
+                    button.remove();
+                }
+            })
+            .catch(err => console.log('Error marking notification as read:', err));
+        });
+    });
+});
+</script>
+{% endblock %}

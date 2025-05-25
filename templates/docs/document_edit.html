@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5 pt-4">
+    <h2 class="mb-4 text-center text-primary fw-bold" style="text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);">
+        Редактировать документ
+    </h2>
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <div class="card shadow-sm border-0 rounded-4 p-4" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);">
+                <form method="post" enctype="multipart/form-data" id="document-form">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="{{ form.title.id_for_label }}" class="form-label fw-bold">Название</label>
+                        {{ form.title }}
+                        {% if form.title.errors %}
+                            <div class="text-danger small">{{ form.title.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.file.id_for_label }}" class="form-label fw-bold">Файл</label>
+                        <p>Текущий файл: {% if doc.file %}{{ doc.file.name }}{% else %}Не загружен{% endif %}</p>
+                        {{ form.file }}
+                        {% if form.file.errors %}
+                            <div class="text-danger small">{{ form.file.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Подписанты</label>
+                        <!-- Поле поиска -->
+                        <div class="input-group mb-2">
+                            <input type="text" id="recipient-search" class="form-control" placeholder="Поиск по email">
+                            <button type="button" id="search-btn" class="btn btn-primary-custom">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <!-- Скрытое поле для отправки recipients -->
+                        <input type="hidden" name="recipients" id="recipients-input">
+                        <!-- Результаты поиска -->
+                        <div id="search-results" class="list-group mb-2" style="max-height: 150px; overflow-y: auto;"></div>
+                        <!-- Выбранные подписанты -->
+                        <div id="selected-recipients" class="d-flex flex-wrap gap-2">
+                            {% for recipient in doc.recipients.all %}
+                                <div class="recipient-chip" data-id="{{ recipient.id }}">
+                                    {{ recipient.full_name }} ({{ recipient.email }})
+                                    <span class="remove-btn" data-id="{{ recipient.id }}">×</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% if form.recipients.errors %}
+                            <div class="text-danger small">{{ form.recipients.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex justify-content-between mt-4">
+                        <button type="submit" class="btn btn-primary-custom rounded-pill px-4">
+                            <i class="fas fa-save me-2"></i>Сохранить
+                        </button>
+                        <a href="{% url 'my_documents' %}" class="btn btn-secondary-custom rounded-pill px-4">
+                            <i class="fas fa-arrow-left me-2"></i>Отмена
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<style>
+    .card {
+        transition: all 0.3s ease;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+    .form-label {
+        font-size: 1rem;
+        color: #2C3E50;
+    }
+    .form-control {
+        border-radius: 0.5rem;
+        border: 1px solid #ced4da;
+        transition: border-color 0.3s ease;
+    }
+    .form-control:focus {
+        border-color: #2C3E50;
+        box-shadow: 0 0 5px rgba(44, 62, 80, 0.2);
+    }
+    .btn-primary-custom {
+        background-color: #2C3E50;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    .btn-primary-custom:hover {
+        background-color: #233240;
+        transform: scale(1.05);
+    }
+    .btn-secondary-custom {
+        background-color: #6c757d;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    .btn-secondary-custom:hover {
+        background-color: #2C3E50;
+        transform: scale(1.05);
+    }
+    .recipient-chip {
+        background-color: #2C3E50;
+        color: white;
+        border-radius: 1rem;
+        padding: 0.5rem 1rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+    }
+    .recipient-chip .remove-btn {
+        cursor: pointer;
+        color: #ffffff;
+        font-size: 0.8rem;
+    }
+    .list-group-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 1rem;
+    }
+    .list-group-item:hover {
+        background-color: #f8f9fa;
+    }
+    .add-btn {
+        font-size: 0.8rem;
+        padding: 0.2rem 0.5rem;
+    }
+    @media (max-width: 768px) {
+        .card {
+            padding: 1.5rem;
+        }
+        .form-label {
+            font-size: 0.9rem;
+        }
+        .btn-primary-custom, .btn-secondary-custom {
+            font-size: 0.9rem;
+            padding: 8px 16px;
+        }
+        .recipient-chip {
+            font-size: 0.8rem;
+            padding: 0.4rem 0.8rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('recipient-search');
+    const searchBtn = document.getElementById('search-btn');
+    const searchResults = document.getElementById('search-results');
+    const selectedRecipients = document.getElementById('selected-recipients');
+    const recipientsInput = document.getElementById('recipients-input');
+    let selectedIds = [
+        {% for recipient in doc.recipients.all %}
+            "{{ recipient.id }}"{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    // Функция для обновления скрытого поля
+    function updateRecipientsInput() {
+        recipientsInput.value = selectedIds.join(',');
+    }
+
+    // Инициализация скрытого поля
+    updateRecipientsInput();
+
+    // Поиск при клике на кнопку или Enter
+    function performSearch() {
+        const query = searchInput.value.trim();
+        if (query.length < 3) {
+            searchResults.innerHTML = '<div class="list-group-item text-muted">Введите минимум 3 символа</div>';
+            return;
+        }
+
+        fetch(`/docs/search-users/?q=${encodeURIComponent(query)}`, {
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            searchResults.innerHTML = '';
+            if (data.users.length === 0) {
+                searchResults.innerHTML = '<div class="list-group-item text-muted">Пользователи не найдены</div>';
+                return;
+            }
+            data.users.forEach(user => {
+                const isSelected = selectedIds.includes(user.id.toString());
+                const item = document.createElement('div');
+                item.className = 'list-group-item';
+                item.innerHTML = `
+                    <span>${user.full_name} (${user.email})</span>
+                    <button class="btn btn-primary-custom add-btn" data-id="${user.id}" data-name="${user.full_name}" data-email="${user.email}" ${isSelected ? 'disabled' : ''}>
+                        Добавить
+                    </button>
+                `;
+                searchResults.appendChild(item);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            searchResults.innerHTML = '<div class="list-group-item text-danger">Ошибка поиска</div>';
+        });
+    }
+
+    // Обработчик кнопки поиска
+    searchBtn.addEventListener('click', performSearch);
+
+    // Поиск при нажатии Enter
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            performSearch();
+        }
+    });
+
+    // Обработчик добавления подписанта
+    searchResults.addEventListener('click', function(e) {
+        if (e.target.classList.contains('add-btn')) {
+            const id = e.target.getAttribute('data-id');
+            const name = e.target.getAttribute('data-name');
+            const email = e.target.getAttribute('data-email');
+
+            // Добавляем в список выбранных
+            selectedIds.push(id);
+            const chip = document.createElement('div');
+            chip.className = 'recipient-chip';
+            chip.setAttribute('data-id', id);
+            chip.innerHTML = `
+                ${name} (${email})
+                <span class="remove-btn" data-id="${id}">×</span>
+            `;
+            selectedRecipients.appendChild(chip);
+            updateRecipientsInput();
+
+            // Отключаем кнопку
+            e.target.disabled = true;
+        }
+    });
+
+    // Обработчик удаления подписанта
+    selectedRecipients.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-btn')) {
+            const id = e.target.getAttribute('data-id');
+            selectedIds = selectedIds.filter(selectedId => selectedId !== id);
+            e.target.parentElement.remove();
+            updateRecipientsInput();
+
+            // Включаем кнопку в результатах поиска
+            const addBtn = searchResults.querySelector(`.add-btn[data-id="${id}"]`);
+            if (addBtn) {
+                addBtn.disabled = false;
+            }
+        }
+    });
+
+    // Очистка результатов при новом вводе
+    searchInput.addEventListener('input', function() {
+        if (searchInput.value.trim() === '') {
+            searchResults.innerHTML = '';
+        }
+    });
+});
+</script>
+{% endblock %}

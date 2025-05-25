@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+{% block title %}Логи действий{% endblock %}
+{% block content %}
+<style>
+    /* Контейнер страницы */
+    .logs-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Заголовок */
+    .logs-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2C3E50;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    /* Карточка фильтров */
+    .filter-card {
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+
+    .filter-card .card-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #2C3E50;
+        margin-bottom: 15px;
+    }
+
+    /* Форма фильтров */
+    .filter-form .form-label {
+        font-weight: 500;
+        color: #2C3E50;
+    }
+
+    .filter-form .form-select,
+    .filter-form .form-control {
+        border-radius: 5px;
+        border: 1px solid #ced4da;
+        padding: 10px;
+        font-size: 0.95rem;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .filter-form .form-select:focus,
+    .filter-form .form-control:focus {
+        border-color: #2C3E50;
+        box-shadow: 0 0 5px rgba(44, 62, 80, 0.2);
+        outline: none;
+    }
+
+    /* Кнопка фильтрации */
+    .btn-filter {
+        background-color: #2C3E50;
+        border-color: #2C3E50;
+        color: #fff;
+        padding: 10px;
+        border-radius: 5px;
+        font-weight: 500;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .btn-filter:hover {
+        background-color: #34495E;
+        border-color: #34495E;
+        transform: scale(1.05);
+    }
+
+    /* Карточка таблицы */
+    .table-card {
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+    }
+
+    /* Таблица */
+    .logs-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+    }
+
+    .logs-table th,
+    .logs-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .logs-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        color: #2C3E50;
+    }
+
+    .logs-table tbody tr {
+        transition: background-color 0.2s ease;
+    }
+
+    .logs-table tbody tr:hover {
+        background-color: #f1f3f5;
+    }
+
+    /* Иконки действий */
+    .action-icon {
+        margin-right: 5px;
+        color: #2C3E50;
+    }
+
+    .action-create .action-icon { color: #28a745; }
+    .action-edit .action-icon { color: #ffc107; }
+    .action-sign .action-icon { color: #17a2b8; }
+
+    /* Сообщение о пустых логах */
+    .no-logs {
+        text-align: center;
+        padding: 30px;
+        color: #6c757d;
+        font-size: 1rem;
+    }
+
+    .no-logs i {
+        font-size: 2rem;
+        color: #ced4da;
+        margin-bottom: 10px;
+    }
+
+    /* Адаптивность */
+    @media (max-width: 992px) {
+        .filter-form .col-md-3,
+        .filter-form .col-md-2 {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .logs-container {
+            padding: 15px;
+        }
+
+        .logs-title {
+            font-size: 1.5rem;
+        }
+
+        .filter-form .col-md-3,
+        .filter-form .col-md-2 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+
+        .logs-table {
+            font-size: 0.9rem;
+        }
+
+        .logs-table th,
+        .logs-table td {
+            padding: 10px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .logs-table {
+            display: block;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .btn-filter {
+            font-size: 0.9rem;
+            padding: 8px;
+        }
+    }
+</style>
+
+<div class="logs-container">
+    <h1 class="logs-title">Логи действий</h1>
+
+    <!-- Форма фильтров -->
+    <div class="filter-card">
+        <h5 class="card-title">Фильтры</h5>
+        <form method="GET" action="{% url 'logs' %}" class="filter-form row g-3">
+            <div class="col-md-3">
+                <label for="user" class="form-label">Пользователь</label>
+                <select name="user" id="user" class="form-select">
+                    <option value="">Все пользователи</option>
+                    {% for user in users %}
+                        <option value="{{ user.id }}" {% if selected_user == user.id|stringformat:"s" %}selected{% endif %}>
+                            {{ user.email }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="action" class="form-label">Действие</label>
+                <select name="action" id="action" class="form-select">
+                    <option value="">Все действия</option>
+                    {% for action_value, action_label in actions %}
+                        <option value="{{ action_value }}" {% if selected_action == action_value %}selected{% endif %}>
+                            {{ action_label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="date_from" class="form-label">Дата (с)</label>
+                <input type="date" name="date_from" id="date_from" class="form-control" value="{{ selected_date_from|default_if_none:'' }}">
+            </div>
+            <div class="col-md-2">
+                <label for="date_to" class="form-label">Дата (по)</label>
+                <input type="date" name="date_to" id="date_to" class="form-control" value="{{ selected_date_to|default_if_none:'' }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn-filter w-100">
+                    <i class="fas fa-filter"></i> Фильтровать
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Таблица логов -->
+    <div class="table-card">
+        {% if logs %}
+            <table class="logs-table">
+                <thead>
+                    <tr>
+                        <th>Пользователь</th>
+                        <th>Действие</th>
+                        <th>Документ</th>
+                        <th>Дата</th>
+                        <th>Комментарий</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                        <tr>
+                            <td>{{ log.user.email }}</td>
+                            <td class="action-{{ log.action }}">
+                                {% if log.action == 'create' %}
+                                    <i class="fas fa-plus-circle action-icon"></i>
+                                {% elif log.action == 'edit' %}
+                                    <i class="fas fa-edit action-icon"></i>
+                                {% elif log.action == 'sign' %}
+                                    <i class="fas fa-signature action-icon"></i>
+                                {% endif %}
+                                {{ log.get_action_display }}
+                            </td>
+                            <td>{{ log.document.title }}</td>
+                            <td>{{ log.timestamp|date:'Y-m-d H:i' }}</td>
+                            <td>{{ log.comment|default:'-' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="no-logs">
+                <i class="fas fa-info-circle"></i>
+                <p>Нет записей в логах.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,286 @@
+{% extends 'base.html' %}
+{% block title %}Регистрация{% endblock %}
+{% block extra_head %}
+<style>
+    .center-container {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+        width: 100%;
+        margin-top: 50px;
+    }
+
+    .auth-card {
+        border: none;
+        border-radius: 20px;
+        background-color: #fff;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+        padding: 20px;
+        animation: fadeIn 0.8s ease-in-out;
+        /* Removed max-height to allow the card to grow dynamically */
+    }
+
+    .auth-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2C3E50;
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: #2C3E50;
+        margin-bottom: 0.25rem;
+        font-size: 1rem;
+    }
+
+    .form-control {
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 1rem;
+        border: 1px solid #ced4da;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        height: 48px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .form-control:focus {
+        border-color: #2C3E50;
+        box-shadow: 0 0 8px rgba(44, 62, 80, 0.2);
+        outline: none;
+    }
+
+    .input-group {
+        position: relative;
+        display: flex;
+        align-items: center;
+        height: 48px;
+    }
+
+    .toggle-password {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        color: #7f8c8d;
+        font-size: 1.2rem;
+        z-index: 10;
+        transition: color 0.3s ease;
+        display: flex;
+        align-items: center;
+    }
+
+    .toggle-password:hover {
+        color: #2C3E50;
+    }
+
+    .password-field {
+        padding-right: 40px;
+        border-radius: 10px !important;
+        height: 48px;
+    }
+
+    .btn-primary-custom {
+        background-color: #2C3E50;
+        border: none;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: #fff;
+        transition: background-color 0.3s ease, transform 0.1s ease;
+        width: 100%;
+        display: block;
+        margin: 1rem auto 0;
+        height: 48px;
+        line-height: 24px;
+    }
+
+    .btn-primary-custom:hover {
+        background-color: #34495E;
+        transform: translateY(-2px);
+        color: #fff;
+    }
+
+    .text-primary-custom {
+        color: #2C3E50;
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+
+    .text-primary-custom:hover {
+        color: #34495E;
+        text-decoration: underline;
+    }
+
+    .error-message {
+        color: #e74c3c;
+        font-size: 0.875rem;
+        text-align: center;
+        margin-bottom: 1rem;
+        background: #ffebee;
+        padding: 10px;
+        border-radius: 5px;
+    }
+
+    .password-error, .email-error {
+        color: #e74c3c;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        margin-bottom: 0.5rem;
+        display: block;
+        width: 100%;
+    }
+
+    .input-group-wrapper {
+        position: relative;
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const passwordInput = document.getElementById('id_password');
+        const emailInput = document.getElementById('id_email');
+        const togglePassword = document.querySelector('.toggle-password');
+        const form = document.querySelector('form');
+
+        // Password error element
+        const passwordError = document.createElement('div');
+        passwordError.className = 'password-error';
+        passwordInput.parentNode.parentNode.appendChild(passwordError);
+
+        // Email error element
+        const emailError = document.createElement('div');
+        emailError.className = 'email-error';
+        emailInput.parentNode.insertAdjacentElement('afterend', emailError);
+
+        // Toggle password visibility
+        if (passwordInput && togglePassword) {
+            togglePassword.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                togglePassword.innerHTML = type === 'text' ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+                console.log('Toggled password visibility. Type:', type);
+            });
+        } else {
+            console.error('Password input or toggle element not found.');
+        }
+
+        // Form submission validation
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault(); // Prevent default submission
+            let isValid = true;
+
+            // Clear previous errors
+            passwordError.textContent = '';
+            emailError.textContent = '';
+
+            // Password validation
+            const password = passwordInput.value;
+            if (password.length < 8) {
+                passwordError.textContent += 'Пароль должен содержать минимум 8 символов. ';
+                isValid = false;
+            }
+            if (!/[A-Z]/.test(password)) {
+                passwordError.textContent += 'Пароль должен содержать хотя бы одну заглавную букву. ';
+                isValid = false;
+            }
+            if (!/[a-z]/.test(password)) {
+                passwordError.textContent += 'Пароль должен содержать хотя бы одну строчную букву. ';
+                isValid = false;
+            }
+            if (!/[0-9]/.test(password)) {
+                passwordError.textContent += 'Пароль должен содержать хотя бы одну цифру. ';
+                isValid = false;
+            }
+            if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+                passwordError.textContent += 'Пароль должен содержать хотя бы один специальный символ (например, !, @, #). ';
+                isValid = false;
+            }
+
+            // Email validation (check if already taken)
+            const email = emailInput.value;
+            try {
+                const response = await fetch('/check-email/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({ email: email })
+                });
+                const data = await response.json();
+                if (data.exists) {
+                    emailError.textContent = 'Этот email уже зарегистрирован.';
+                    isValid = false;
+                }
+            } catch (error) {
+                console.error('Error checking email:', error);
+                emailError.textContent = 'Данный email занят. Попробуйте другой.';
+                isValid = false;
+            }
+
+            // If all validations pass, submit the form
+            if (isValid) {
+                form.submit();
+            }
+        });
+    });
+</script>
+{% endblock %}
+{% block content %}
+<div class="center-container">
+    <div class="auth-card">
+        <div class="card-body">
+            <div class="text-center mb-4">
+                <h2 class="auth-title">Регистрация</h2>
+                <p class="text-muted">Создайте новый аккаунт</p>
+            </div>
+            {% if form.non_field_errors %}
+                <div class="error-message">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                    {% if field.name != 'role' %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {% if field.field.widget.input_type == 'text' or field.field.widget.input_type == 'email' %}
+                                <input type="{{ field.field.widget.input_type }}" name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-control" placeholder="Введите {{ field.label|lower }}" {% if field.field.required %}required{% endif %}>
+                            {% elif field.field.widget.input_type == 'password' %}
+                                <div class="input-group-wrapper">
+                                    <div class="input-group">
+                                        <input type="password" name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-control password-field" placeholder="Введите {{ field.label|lower }}" {% if field.field.required %}required{% endif %}>
+                                        <span class="toggle-password"><i class="fas fa-eye"></i></span>
+                                    </div>
+                                </div>
+                            {% endif %}
+                            {% if field.errors %}
+                                <div class="error-message">
+                                    {{ field.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+                <button type="submit" class="btn btn-primary-custom">Зарегистрироваться</button>
+            </form>
+            <div class="mt-4 text-center">
+                <p>Уже есть аккаунт? <a href="{% url 'login' %}" class="text-primary-custom">Войти</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

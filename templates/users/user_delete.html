@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% block title %}Удалить пользователя{% endblock %}
+{% block content %}
+<style>
+    /* Контейнер страницы */
+    .delete-container {
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 30px;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    /* Заголовок */
+    .delete-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2C3E50;
+        margin-bottom: 20px;
+    }
+
+    /* Текст предупреждения */
+    .delete-text {
+        font-size: 1.1rem;
+        color: #333;
+        margin-bottom: 30px;
+        line-height: 1.6;
+    }
+
+    .delete-text i {
+        color: #DC3545;
+        margin-right: 10px;
+    }
+
+    /* Форма */
+    .delete-form {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    /* Кнопка "Удалить" */
+    .btn-delete {
+        background-color: #DC3545;
+        border-color: #DC3545;
+        color: #fff;
+        padding: 10px 20px;
+        font-size: 1rem;
+        font-weight: 500;
+        border-radius: 5px;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .btn-delete:hover {
+        background-color: #C82333;
+        border-color: #C82333;
+        transform: scale(1.05);
+    }
+
+    /* Кнопка "Отмена" */
+    .btn-cancel {
+        background-color: #6C757D;
+        border-color: #6C757D;
+        color: #fff;
+        padding: 10px 20px;
+        font-size: 1rem;
+        font-weight: 500;
+        border-radius: 5px;
+        text-decoration: none;
+        display: inline-block;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .btn-cancel:hover {
+        background-color: #5A6268;
+        border-color: #5A6268;
+        transform: scale(1.05);
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+        .delete-container {
+            margin: 30px auto;
+            padding: 20px;
+        }
+
+        .delete-title {
+            font-size: 1.5rem;
+        }
+
+        .delete-text {
+            font-size: 1rem;
+        }
+
+        .btn-delete,
+        .btn-cancel {
+            font-size: 0.9rem;
+            padding: 8px 15px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .delete-container {
+            margin: 20px auto;
+            padding: 15px;
+        }
+
+        .delete-form {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .btn-delete,
+        .btn-cancel {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+    }
+</style>
+
+<div class="delete-container">
+    <h1 class="delete-title">Удалить пользователя {{ user.email }}?</h1>
+    <p class="delete-text"><i class="fas fa-exclamation-triangle"></i> Вы уверены, что хотите удалить пользователя {{ user.full_name }}? Это действие нельзя отменить.</p>
+    <form method="post" class="delete-form">
+        {% csrf_token %}
+        <button type="submit" class="btn-delete">Удалить</button>
+        <a href="{% url 'user_list' %}" class="btn-cancel">Отмена</a>
+    </form>
+</div>
+{% endblock %}

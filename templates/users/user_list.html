@@ -1,0 +1,304 @@
+{% extends 'base.html' %}
+{% block title %}Пользователи{% endblock %}
+{% block content %}
+<div class="container mt-5 pt-4">
+    <h2 class="mb-4 text-center text-primary fw-bold">
+        Управление пользователями
+    </h2>
+
+    <!-- Поле поиска -->
+    <div class="row justify-content-center mb-4">
+        <div class="col-12 col-md-8 col-lg-6 text-center">
+            <input type="text" id="search-email" class="form-control mb-3" placeholder="Поиск по email...">
+        </div>
+    </div>
+
+    <!-- Кнопка для раскрытия формы -->
+    <div class="row justify-content-center mb-4">
+        <div class="col-12 col-md-8 col-lg-6 text-center">
+            <button id="toggle-create-form" class="btn btn-primary rounded-pill px-4">
+                <i class="fas fa-user-plus me-2"></i>Создать нового пользователя
+            </button>
+        </div>
+    </div>
+
+    <!-- Форма создания нового пользователя -->
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <div id="create-user-form" class="card border-0 rounded-4 p-4" style="display: none; background: #f8f9fa;">
+                <h3 class="card-title mb-3 fw-bold text-primary">Создать нового пользователя</h3>
+                <form id="user-create-form" method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="{{ form.email.id_for_label }}" class="form-label fw-bold">Email</label>
+                        <input type="email" name="{{ form.email.name }}" value="{{ form.email.value|default_if_none:'' }}" class="form-control" id="{{ form.email.id_for_label }}" placeholder="Введите email">
+                        <div id="email-error" class="text-danger small"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.full_name.id_for_label }}" class="form-label fw-bold">ФИО</label>
+                        <input type="text" name="{{ form.full_name.name }}" value="{{ form.full_name.value|default_if_none:'' }}" class="form-control" id="{{ form.full_name.id_for_label }}" placeholder="Введите ФИО">
+                        <div id="full-name-error" class="text-danger small"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.role.id_for_label }}" class="form-label fw-bold">Роль</label>
+                        <select name="{{ form.role.name }}" id="{{ form.role.id_for_label }}" class="form-select">
+                            {% for value, label in form.role.field.choices %}
+                                <option value="{{ value }}" {% if value == form.role.value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <div id="role-error" class="text-danger small"></div>
+                    </div>
+                    <div class="mb-3 position-relative">
+                        <label for="{{ form.password.id_for_label }}" class="form-label fw-bold">Пароль</label>
+                        <div class="input-group">
+                            <input type="password" name="{{ form.password.name }}" class="form-control" id="{{ form.password.id_for_label }}" placeholder="Введите пароль" style="background-color: #fff3cd; border-radius: 0.5rem;">
+                            <span class="toggle-password"><i class="fas fa-eye"></i></span>
+                        </div>
+                        <div id="password-error" class="text-danger small"></div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-primary rounded-pill px-4">
+                            <i class="fas fa-save me-2"></i>Создать
+                        </button>
+                        <button type="button" id="cancel-create-form" class="btn btn-secondary rounded-pill px-4">
+                            <i class="fas fa-times me-2"></i>Отмена
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица пользователей -->
+    <div class="card border-0 rounded-4 mt-4">
+        <div class="card-body">
+            <h3 class="card-title mb-3 fw-bold">Все пользователи</h3>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>ФИО</th>
+                            <th>Роль</th>
+                            <th>Дата регистрации</th>
+                            <th>Уведомления</th>
+                            <th>Документы</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-table-body">
+                        {% for user in users %}
+                            <tr>
+                                <td>{{ user.email }}</td>
+                                <td>{{ user.full_name }}</td>
+                                <td>
+                                    <span class="badge {% if user.role == 'admin' %}bg-primary{% elif user.role == 'manager' %}bg-warning{% else %}bg-secondary{% endif %} rounded-pill">
+                                        {{ user.get_role_display }}
+                                    </span>
+                                </td>
+                                <td>{{ user.date_joined|date:"Y-m-d H:i" }}</td>
+                                <td>
+                                    <span class="badge {% if user.email_notifications %}bg-success{% else %}bg-secondary{% endif %} rounded-pill">
+                                        {{ user.email_notifications|yesno:"Включены,Отключены" }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{% url 'user_documents' user.id %}" class="btn btn-sm btn-outline-primary rounded-pill">
+                                        <i class="fas fa-file-alt me-1"></i>Просмотреть
+                                    </a>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <a href="{% url 'user_edit' user.id %}" class="btn btn-sm btn-outline-secondary rounded-pill">
+                                            <i class="fas fa-edit me-1"></i>Редактировать
+                                        </a>
+                                        <a href="{% url 'user_delete' user.id %}" class="btn btn-sm btn-outline-danger rounded-pill">
+                                            <i class="fas fa-trash me-1"></i>Удалить
+                                        </a>
+                                        <a href="{% url 'toggle_email_notifications' user.id %}" class="btn btn-sm {% if user.email_notifications %}btn-outline-warning{% else %}btn-outline-success{% endif %} rounded-pill">
+                                            <i class="fas {% if user.email_notifications %}fa-bell-slash{% else %}fa-bell{% endif %} me-1"></i>
+                                            {% if user.email_notifications %}Отключить{% else %}Включить{% endif %}
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-muted text-center">Нет пользователей</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.card {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+.form-label {
+    font-size: 1rem;
+    color: #2C3E50;
+}
+.form-control, .form-select {
+    border-radius: 0.5rem;
+    border: 1px solid #ced4da;
+}
+.table th, .table td {
+    vertical-align: middle;
+}
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+}
+.badge {
+    font-size: 0.9rem;
+    padding: 0.5em 1em;
+}
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #7f8c8d; /* Light gray to match the image */
+    font-size: 1.2rem;
+    z-index: 10;
+    background-color: #fff; /* Circular background */
+    border-radius: 50%; /* Makes it circular */
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.3s ease, background-color 0.3s ease;
+}
+.toggle-password:hover {
+    color: #2C3E50; /* Darker color on hover */
+    background-color: #f0f0f0; /* Slight background change on hover */
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    const toggleButton = $('#toggle-create-form');
+    const cancelButton = $('#cancel-create-form');
+    const formContainer = $('#create-user-form');
+    const userForm = $('#user-create-form');
+    const searchInput = $('#search-email');
+    const tableBody = $('#user-table-body');
+
+    // Открытие формы
+    toggleButton.on('click', function() {
+        formContainer.show();
+        clearErrors();
+    });
+
+    // Закрытие формы при нажатии "Отмена"
+    cancelButton.on('click', function() {
+        formContainer.hide();
+        userForm[0].reset();
+        clearErrors();
+    });
+
+    // Поиск по email
+    searchInput.on('input', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        tableBody.find('tr').each(function() {
+            const email = $(this).find('td:first').text().toLowerCase();
+            if (email.includes(searchTerm)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+
+    // Отправка формы через AJAX
+    userForm.on('submit', function(e) {
+        e.preventDefault();
+        const email = $('#id_email').val().trim();
+        const fullName = $('#id_full_name').val().trim();
+        const password = $('#id_password').val().trim();
+        clearErrors();
+
+        // Клиентская валидация
+        if (!email) {
+            $('#email-error').text('Поле email не может быть пустым');
+            return;
+        }
+        if (!fullName) {
+            $('#full-name-error').text('Поле ФИО не может быть пустым');
+            return;
+        }
+        if (!password) {
+            $('#password-error').text('Поле пароля не может быть пустым');
+            return;
+        }
+        let passwordErrorMessage = '';
+        if (password.length < 8) {
+            passwordErrorMessage += 'Пароль должен содержать минимум 8 символов. ';
+        }
+        if (!/[A-Z]/.test(password)) {
+            passwordErrorMessage += 'Пароль должен содержать хотя бы одну заглавную букву. ';
+        }
+        if (!/[a-z]/.test(password)) {
+            passwordErrorMessage += 'Пароль должен содержать хотя бы одну строчную букву. ';
+        }
+        if (!/[0-9]/.test(password)) {
+            passwordErrorMessage += 'Пароль должен содержать хотя бы одну цифру. ';
+        }
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+            passwordErrorMessage += 'Пароль должен содержать хотя бы один специальный символ (например, !, @, #). ';
+        }
+        if (passwordErrorMessage) {
+            $('#password-error').text(passwordErrorMessage.trim());
+            return;
+        }
+
+        const formData = $(this).serialize();
+
+        $.ajax({
+            url: '',
+            type: 'POST',
+            data: formData,
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    clearErrors();
+                }
+            },
+            error: function(xhr, status, error) {
+                clearErrors();
+                $('#email-error').text('Данный email занят. Попробуйте другой.');
+            }
+        });
+    });
+
+    // Toggle password visibility
+    const togglePassword = $('.toggle-password');
+    if (togglePassword.length) {
+        togglePassword.on('click', function() {
+            const passwordInput = $('#id_password');
+            const type = passwordInput.attr('type') === 'password' ? 'text' : 'password';
+            passwordInput.attr('type', type);
+            togglePassword.html(type === 'text' ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>');
+            console.log('Toggled password visibility. Type:', type);
+        });
+    }
+
+    // Функция очистки ошибок
+    function clearErrors() {
+        $('#email-error, #full-name-error, #role-error, #password-error').text('');
+    }
+});
+</script>
+{% endblock %}
