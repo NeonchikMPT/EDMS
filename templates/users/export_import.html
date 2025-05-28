@@ -75,6 +75,7 @@
     .btn-primary-custom:hover {
         background-color: #34495E;
         border-color: #34495E;
+        color: #fff; /* Оставляем текст белым */
         transform: scale(1.05);
     }
 
@@ -91,6 +92,7 @@
     .btn-secondary-custom:hover {
         background-color: #5a6268;
         border-color: #5a6268;
+        color: #fff; /* Оставляем текст белым */
         transform: scale(1.05);
     }
 
@@ -154,15 +156,7 @@
             <form method="post" enctype="multipart/form-data" class="mb-4">
                 {% csrf_token %}
                 <div class="mb-3">
-                    <select name="export_type" id="import-type" class="form-select">
-                        <option value="import_users_csv">Импорт пользователей (CSV)</option>
-                        <option value="import_documents_csv">Импорт документов (CSV)</option>
-                        <option value="import_users_sql">Импорт пользователей (SQL)</option>
-                        <option value="import_documents_sql">Импорт документов (SQL)</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <input type="file" name="csv_file" id="import-file" accept=".csv" class="form-control">
+                    <input type="file" name="file" id="import-file" accept=".csv,.sql" class="form-control">
                 </div>
                 <button type="submit" class="btn btn-primary-custom"><i class="fas fa-file-import icon"></i>Импортировать</button>
             </form>
@@ -174,18 +168,4 @@
         <a href="{% url 'user_list' %}" class="btn btn-secondary-custom"><i class="fas fa-arrow-left icon"></i>Назад к списку пользователей</a>
     </p>
 </div>
-
-<script>
-    document.getElementById('import-type').addEventListener('change', function() {
-        const importType = this.value;
-        const fileInput = document.getElementById('import-file');
-        if (importType === 'import_users_sql' || importType === 'import_documents_sql') {
-            fileInput.name = 'sql_file';
-            fileInput.accept = '.sql';
-        } else {
-            fileInput.name = 'csv_file';
-            fileInput.accept = '.csv';
-        }
-    });
-</script>
 {% endblock %}

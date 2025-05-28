@@ -19,9 +19,9 @@ class Document(models.Model):
         return self.title
 
 class Signature(models.Model):
-    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='signatures')
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    signed_at = models.DateTimeField(auto_now_add=True)
+    document = models.ForeignKey('Document', on_delete=models.CASCADE, related_name='signatures')
+    user = models.ForeignKey('users.User', on_delete=models.CASCADE)
+    signed_at = models.DateTimeField(null=True, blank=True)  # Убираем default и разрешаем NULL
 
     class Meta:
         unique_together = ('document', 'user')  # Один пользователь подписывает документ только раз

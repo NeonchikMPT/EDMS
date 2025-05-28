@@ -1,9 +1,8 @@
-import random
-import re
-import string
+import os
 import subprocess
+from django.core.files.base import ContentFile
 from django.urls import reverse
-from datetime import datetime
+import datetime
 import pytz
 from django.conf import settings
 from django.contrib import messages
@@ -15,6 +14,9 @@ from django.shortcuts import render, redirect, get_object_or_404
 from io import StringIO
 import csv
 import psycopg2
+import tempfile
+import atexit
+import re
 
 from docs.decorators import admin_required
 from docs.views import error_403
@@ -22,10 +24,6 @@ from .forms import RegisterForm, ProfileForm, LoginForm, PasswordResetRequestFor
 from .models import User, PasswordResetToken
 from docs.models import Document
 from django.db import IntegrityError
-
-def generate_temp_password(length=8):
-    characters = string.ascii_letters + string.digits
-    return ''.join(random.choice(characters) for _ in range(length))
 
 @admin_required
 def user_list(request):
@@ -233,279 +231,402 @@ def logout_view(request):
 
 @admin_required
 def export_import(request):
+    if request.user.role != 'admin':
+        return error_403(request)
+
     if request.method == 'POST':
-        export_type = request.POST.get('export_type')
-        # Экспорт CSV
-        if export_type == 'users_csv':
-            response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
-            response['Content-Disposition'] = 'attachment; filename="users.csv"'
-            writer = csv.writer(response)
-            writer.writerow(['ID', 'Email', 'Full Name', 'Role', 'Date Joined', 'Temp Password'])
-            users = User.objects.all()
-            for user in users:
-                temp_password = generate_temp_password()
-                writer.writerow([
-                    user.id,
-                    user.email,
-                    user.full_name,
-                    user.role,
-                    user.date_joined.strftime('%Y-%m-%d %H:%M'),
-                    temp_password
-                ])
-            return response
-        elif export_type == 'documents_csv':
-            response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
-            response['Content-Disposition'] = 'attachment; filename="documents.csv"'
-            writer = csv.writer(response)
-            writer.writerow(['ID', 'Title', 'Status', 'Owner', 'Recipient', 'Created At'])
-            documents = Document.objects.all()
-            for doc in documents:
-                writer.writerow([
-                    doc.id,
-                    doc.title,
-                    doc.status,
-                    doc.owner.email if doc.owner else '',
-                    doc.recipient.email if doc.recipient else '',
-                    doc.created_at.strftime('%Y-%m-%d %H:%M')
-                ])
-            return response
-        # Экспорт SQL
-        elif export_type == 'users_sql':
-            response = HttpResponse(content_type='text/sql')
-            response['Content-Disposition'] = 'attachment; filename="users.sql"'
-            output = StringIO()
-            users = User.objects.all()
-            for user in users:
-                temp_password = generate_temp_password()
-                output.write(
-                    f"INSERT INTO users_user (id, email, full_name, role, date_joined, password) VALUES ({user.id}, '{user.email}', '{user.full_name}', '{user.role}', '{user.date_joined.strftime('%Y-%m-%d %H:%M:%S')}', '{temp_password}');\n")
-            response.write(output.getvalue())
-            output.close()
-            return response
-        elif export_type == 'documents_sql':
-            response = HttpResponse(content_type='text/sql')
-            response['Content-Disposition'] = 'attachment; filename="documents.sql"'
-            output = StringIO()
-            documents = Document.objects.all()
-            for doc in documents:
-                owner_id = f"'{doc.owner.id}'" if doc.owner else 'NULL'
-                recipient_id = f"'{doc.recipient.id}'" if doc.recipient else 'NULL'
-                output.write(
-                    f"INSERT INTO docs_document (id, title, status, owner_id, recipient_id, created_at) VALUES ({doc.id}, '{doc.title}', '{doc.status}', {owner_id}, {recipient_id}, '{doc.created_at.strftime('%Y-%m-%d %H:%M:%S')}');\n")
-            response.write(output.getvalue())
-            output.close()
-            return response
-        elif export_type == 'all_sql':
+        # Экспорт
+        if 'export_type' in request.POST:
+            export_type = request.POST.get('export_type')
+            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
             db_settings = settings.DATABASES['default']
             db_name = db_settings['NAME']
             db_user = db_settings['USER']
             db_password = db_settings['PASSWORD']
             db_host = db_settings['HOST']
             db_port = db_settings['PORT']
-            pg_dump_cmd = [
-                'pg_dump',
-                f'--dbname=postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}',
-                '--format=plain',
-                '--no-owner',
-                '--no-privileges'
-            ]
-            try:
-                result = subprocess.run(pg_dump_cmd, capture_output=True, text=True, check=True)
-                response = HttpResponse(content_type='text/sql')
-                response['Content-Disposition'] = 'attachment; filename="database.sql"'
-                response.write(result.stdout)
+
+            if export_type == 'users_csv':
+                # Экспорт пользователей в CSV
+                output = StringIO()
+                writer = csv.writer(output)
+                writer.writerow(['Email', 'ID', 'Full Name', 'Role', 'Date Joined', 'Password', 'Avatar Path'])
+                users = User.objects.all()
+                for user in users:
+                    avatar_path = os.path.relpath(user.avatar.path, settings.MEDIA_ROOT) if user.avatar else ''
+                    writer.writerow([
+                        user.email,
+                        user.id,
+                        user.full_name,
+                        user.role,
+                        user.date_joined.strftime('%Y-%m-%d %H:%M'),
+                        user.password,
+                        avatar_path
+                    ])
+                response = HttpResponse(output.getvalue(), content_type='text/csv')
+                response['Content-Disposition'] = f'attachment; filename="users_{timestamp}.csv"'
                 return response
-            except subprocess.CalledProcessError as e:
-                messages.error(request, f'Ошибка экспорта базы данных: {e.stderr}')
-                return redirect('export_import')
-            except FileNotFoundError:
-                messages.error(request,
-                               'Утилита pg_dump не найдена. Убедитесь, что PostgreSQL установлен и pg_dump доступен в PATH.')
-                return redirect('export_import')
-        # Импорт CSV
-        elif export_type == 'import_users_csv':
-            csv_file = request.FILES.get('csv_file')
-            if csv_file:
-                try:
-                    decoded_file = csv_file.read().decode('utf-8').splitlines()
-                    reader = csv.DictReader(decoded_file)
-                    role_mapping = {'Администратор': 'admin', 'Сотрудник': 'staff', 'admin': 'admin', 'staff': 'staff'}
-                    for row in reader:
-                        if row['Email'] == request.user.email:
-                            continue
-                        naive_date = datetime.strptime(row['Date Joined'], '%Y-%m-%d %H:%M')
-                        aware_date = pytz.UTC.localize(naive_date)
-                        role = role_mapping.get(row['Role'], 'staff')
-                        user, created = User.objects.get_or_create(
-                            email=row['Email'],
-                            defaults={
-                                'full_name': row['Full Name'],
-                                'role': role,
-                                'date_joined': aware_date
-                            }
+
+            elif export_type == 'documents_csv':
+                # Экспорт документов в CSV
+                output = StringIO()
+                writer = csv.writer(output)
+                writer.writerow(['ID', 'Title', 'Status', 'Owner', 'Recipients', 'Created At', 'File Path'])
+                docs = Document.objects.all()
+                for doc in docs:
+                    recipients = ', '.join(doc.recipients.values_list('email', flat=True))
+                    file_path = os.path.relpath(doc.file.path, settings.MEDIA_ROOT) if doc.file else ''
+                    writer.writerow([
+                        doc.id,
+                        doc.title,
+                        doc.status,
+                        doc.owner.email,
+                        recipients,
+                        doc.created_at.strftime('%Y-%m-%d %H:%M'),
+                        file_path
+                    ])
+                response = HttpResponse(output.getvalue(), content_type='text/csv')
+                response['Content-Disposition'] = f'attachment; filename="documents_{timestamp}.csv"'
+                return response
+
+            elif export_type in ['users_sql', 'documents_sql', 'all_sql']:
+                # Экспорт в SQL
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.sql') as temp_file:
+                    backup_file = temp_file.name
+                    os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+                    pg_dump_cmd = [
+                        'C:\\Program Files\\PostgreSQL\\17\\bin\\pg_dump.exe',
+                        f'--dbname=postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}',
+                        '-F', 'p',
+                        '--data-only',
+                        '--inserts',
+                        '--no-owner',
+                        '--no-privileges',
+                        '--encoding=UTF8'
+                    ]
+                    if export_type == 'users_sql':
+                        pg_dump_cmd.extend(['-t', 'users_user'])
+                    elif export_type == 'documents_sql':
+                        pg_dump_cmd.extend(['-t', 'docs_document', '-t', 'docs_document_recipients'])
+                    pg_dump_cmd.extend(['-f', backup_file])
+                    try:
+                        result = subprocess.run(pg_dump_cmd, capture_output=True, text=True, check=True, encoding='utf-8')
+                        print(f"pg_dump output: {result.stdout}")
+                        print(f"pg_dump errors: {result.stderr}")
+                        with open(backup_file, 'rb') as f:
+                            response = HttpResponse(f.read(), content_type='application/sql')
+                            response['Content-Disposition'] = f'attachment; filename="backup_{timestamp}.sql"'
+                            def cleanup():
+                                if os.path.exists(backup_file):
+                                    os.remove(backup_file)
+                            atexit.register(cleanup)
+                            return response
+                    except subprocess.CalledProcessError as e:
+                        if os.path.exists(backup_file):
+                            os.remove(backup_file)
+                        messages.error(request, f'Ошибка экспорта базы данных: {e.stderr}')
+                        return redirect('export_import')
+                    except Exception as e:
+                        if os.path.exists(backup_file):
+                            os.remove(backup_file)
+                        messages.error(request, f'Неожиданная ошибка при экспорте: {str(e)}')
+                        return redirect('export_import')
+
+        # Импорт
+        file = request.FILES.get('file')
+        if file:
+            try:
+                file_name = file.name.lower()
+                temp_file_path = os.path.join(settings.MEDIA_ROOT, f'temp_import_{file_name}')
+
+                os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+
+                with open(temp_file_path, 'wb') as f:
+                    for chunk in file.chunks():
+                        f.write(chunk)
+
+                if file_name.endswith('.sql'):
+                    # Чтение SQL файла, удаление BOM
+                    with open(temp_file_path, 'r', encoding='utf-8-sig', errors='replace') as f:
+                        sql_content = f.read()
+
+                    # Исправляем пути
+                    sql_content = sql_content.replace('avatars/avatars/', 'avatars/')
+                    sql_content = sql_content.replace('media/docs/docs/', 'media/docs/')
+                    media_root = settings.MEDIA_ROOT.replace('\\', '\\\\')
+                    sql_content = sql_content.replace(f"'{media_root}\\\\", "'").replace(f'"{media_root}\\\\', '"')
+
+                    # Логируем исходный SQL
+                    print(f"Original SQL (first 1000 chars):\n{sql_content[:1000]}")
+
+                    # Добавляем ON CONFLICT с помощью regex
+                    # Для users_user
+                    def replace_users_insert(match):
+                        columns = match.group(1)  # Список столбцов
+                        values = match.group(2)   # Данные VALUES
+                        return (
+                            f'INSERT INTO public.users_user {columns} '
+                            f'ON CONFLICT (id) DO UPDATE SET '
+                            f'email = EXCLUDED.email, '
+                            f'full_name = EXCLUDED.full_name, '
+                            f'role = EXCLUDED.role, '
+                            f'date_joined = EXCLUDED.date_joined, '
+                            f'password = EXCLUDED.password, '
+                            f'avatar = EXCLUDED.avatar '
+                            f'VALUES {values}'
                         )
-                        if not created:
-                            user.full_name = row['Full Name']
-                            user.role = role
-                            user.date_joined = aware_date
-                        if 'Temp Password' in row and row['Temp Password']:
-                            user.set_password(row['Temp Password'])
-                        user.save()
-                    messages.success(request, 'Пользователи импортированы (CSV)')
-                except Exception as e:
-                    messages.error(request, f'Ошибка импорта: {str(e)}')
-                return redirect('export_import')
-        elif export_type == 'import_documents_csv':
-            csv_file = request.FILES.get('csv_file')
-            if csv_file:
-                try:
-                    decoded_file = csv_file.read().decode('utf-8').splitlines()
-                    reader = csv.DictReader(decoded_file)
-                    status_mapping = {'Черновик': 'draft', 'Отправлен': 'sent', 'Подписан': 'signed', 'draft': 'draft',
-                                      'sent': 'sent', 'signed': 'signed'}
-                    for row in reader:
-                        owner = User.objects.filter(email=row['Owner']).first()
-                        recipient = User.objects.filter(email=row['Recipient']).first()
-                        naive_date = datetime.strptime(row['Created At'], '%Y-%m-%d %H:%M')
-                        aware_date = pytz.UTC.localize(naive_date)
-                        status = status_mapping.get(row['Status'], 'draft')
-                        doc, created = Document.objects.get_or_create(
-                            id=row['ID'],
-                            defaults={
-                                'title': row['Title'],
-                                'status': status,
-                                'owner': owner,
-                                'recipient': recipient,
-                                'created_at': aware_date
-                            }
-                        )
-                        if not created:
-                            doc.title = row['Title']
-                            doc.status = status
-                            doc.owner = owner
-                            doc.recipient = recipient
-                            doc.created_at = aware_date
-                        doc.save()
-                    messages.success(request, 'Документы импортированы (CSV)')
-                except Exception as e:
-                    messages.error(request, f'Ошибка импорта: {str(e)}')
-                return redirect('export_import')
-        # Импорт SQL
-        elif export_type == 'import_users_sql':
-            sql_file = request.FILES.get('sql_file')
-            if sql_file:
-                try:
-                    db_settings = settings.DATABASES['default']
-                    conn = psycopg2.connect(
-                        dbname=db_settings['NAME'],
-                        user=db_settings['USER'],
-                        password=db_settings['PASSWORD'],
-                        host=db_settings['HOST'],
-                        port=db_settings['PORT']
+                    sql_content = re.sub(
+                        r'INSERT INTO public\.users_user\s*(\([^)]+\))\s*VALUES\s*(\(.+?\);)',
+                        replace_users_insert,
+                        sql_content,
+                        flags=re.IGNORECASE | re.DOTALL
                     )
-                    cursor = conn.cursor()
-                    sql_content = sql_file.read().decode('utf-8')
-                    sql_commands = sql_content.split(';')
-                    role_mapping = {'Администратор': 'admin', 'Сотрудник': 'staff', 'admin': 'admin', 'staff': 'staff'}
-                    for command in sql_commands:
-                        command = command.strip()
-                        if command and 'INSERT INTO users_user' in command:
-                            match = re.match(r"INSERT INTO users_user \((.*?)\) VALUES \((.*?)\)", command)
-                            if match:
-                                columns = [col.strip() for col in match.group(1).split(',')]
-                                values = [val.strip().strip("'") for val in match.group(2).split(',')]
-                                email = values[columns.index('email')]
-                                if email == request.user.email:
+
+                    # Для docs_document
+                    def replace_docs_insert(match):
+                        columns = match.group(1)
+                        values = match.group(2)
+                        return (
+                            f'INSERT INTO public.docs_document {columns} '
+                            f'ON CONFLICT (id) DO UPDATE SET '
+                            f'title = EXCLUDED.title, '
+                            f'status = EXCLUDED.status, '
+                            f'owner_id = EXCLUDED.owner_id, '
+                            f'created_at = EXCLUDED.created_at, '
+                            f'file = EXCLUDED.file '
+                            f'VALUES {values}'
+                        )
+                    sql_content = re.sub(
+                        r'INSERT INTO public\.docs_document\s*(\([^)]+\))\s*VALUES\s*(\(.+?\);)',
+                        replace_docs_insert,
+                        sql_content,
+                        flags=re.IGNORECASE | re.DOTALL
+                    )
+
+                    # Для docs_document_recipients
+                    def replace_recipients_insert(match):
+                        columns = match.group(1)
+                        values = match.group(2)
+                        return (
+                            f'INSERT INTO public.docs_document_recipients {columns} '
+                            f'ON CONFLICT (document_id, user_id) DO NOTHING '
+                            f'VALUES {values}'
+                        )
+                    sql_content = re.sub(
+                        r'INSERT INTO public\.docs_document_recipients\s*(\([^)]+\))\s*VALUES\s*(\(.+?\);)',
+                        replace_recipients_insert,
+                        sql_content,
+                        flags=re.IGNORECASE | re.DOTALL
+                    )
+
+                    # Логируем обработанный SQL
+                    print(f"Processed SQL (first 1000 chars):\n{sql_content[:1000]}")
+
+                    # Сохраняем для отладки
+                    debug_sql_path = os.path.join(settings.MEDIA_ROOT, f'debug_processed_{file_name}')
+                    with open(debug_sql_path, 'w', encoding='utf-8') as f:
+                        f.write(sql_content)
+
+                    # Сохраняем обработанный SQL
+                    processed_temp_path = os.path.join(settings.MEDIA_ROOT, f'processed_temp_{file_name}')
+                    with open(processed_temp_path, 'w', encoding='utf-8') as f:
+                        f.write(sql_content)
+
+                    # Выполняем импорт
+                    db_settings = settings.DATABASES['default']
+                    db_name = db_settings['NAME']
+                    db_user = db_settings['USER']
+                    db_password = db_settings['PASSWORD']
+                    db_host = db_settings['HOST']
+                    db_port = db_settings['PORT']
+                    psql_cmd = [
+                        'C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe',
+                        f'--dbname=postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}',
+                        '-f', processed_temp_path
+                    ]
+                    try:
+                        result = subprocess.run(
+                            psql_cmd,
+                            capture_output=True,
+                            text=True,
+                            check=True,
+                            encoding='cp1251',  # Кодировка для Windows
+                            errors='replace'
+                        )
+                        print(f"psql output: {result.stdout}")
+                        print(f"psql errors: {result.stderr}")
+                        if "ОШИБКА" in result.stderr or "ERROR" in result.stderr:
+                            raise subprocess.CalledProcessError(result.returncode, psql_cmd, output=result.stdout, stderr=result.stderr)
+                        os.remove(temp_file_path)
+                        os.remove(processed_temp_path)
+                        if os.path.exists(debug_sql_path):
+                            os.remove(debug_sql_path)
+                        messages.success(request, 'База данных успешно импортирована (SQL)')
+                        return redirect('export_import')
+                    except subprocess.CalledProcessError as e:
+                        os.remove(temp_file_path)
+                        if os.path.exists(processed_temp_path):
+                            os.remove(processed_temp_path)
+                        if os.path.exists(debug_sql_path):
+                            os.remove(debug_sql_path)
+                        messages.error(request, f'Ошибка при импорте SQL: {e.stderr}')
+                        return redirect('export_import')
+                    except FileNotFoundError as e:
+                        os.remove(temp_file_path)
+                        if os.path.exists(processed_temp_path):
+                            os.remove(processed_temp_path)
+                        if os.path.exists(debug_sql_path):
+                            os.remove(debug_sql_path)
+                        messages.error(request, f'Ошибка: {str(e)}')
+                        return redirect('export_import')
+                    except Exception as e:
+                        os.remove(temp_file_path)
+                        if os.path.exists(processed_temp_path):
+                            os.remove(processed_temp_path)
+                        if os.path.exists(debug_sql_path):
+                            os.remove(debug_sql_path)
+                        messages.error(request, f'Неожиданная ошибка при импорте: {str(e)}')
+                        return redirect('export_import')
+
+                elif file_name.endswith('.csv'):
+                    try:
+                        with open(temp_file_path, 'rb') as f:
+                            file_content = f.read()
+                    except IOError as e:
+                        os.remove(temp_file_path)
+                        messages.error(request, f'Ошибка чтения файла: {str(e)}')
+                        return redirect('export_import')
+
+                    try:
+                        decoded_file = file_content.decode('utf-8').splitlines()
+                        reader = csv.DictReader(decoded_file)
+                        headers = reader.fieldnames
+                        has_errors = False
+
+                        # Импорт пользователей
+                        if 'Email' in headers and 'Full Name' in headers:
+                            role_mapping = {'Администратор': 'admin', 'Сотрудник': 'staff', 'admin': 'admin', 'staff': 'staff'}
+                            for row in reader:
+                                if not row['Email'] or row['Email'] == request.user.email:
                                     continue
-                                naive_date = datetime.strptime(values[columns.index('date_joined')],
-                                                               '%Y-%m-%d %H:%M:%S')
-                                aware_date = pytz.UTC.localize(naive_date)
-                                role = role_mapping.get(values[columns.index('role')], 'staff')
-                                cursor.execute("SELECT 1 FROM users_user WHERE email = %s", (email,))
-                                if cursor.fetchone():
-                                    update_query = """
-                                    UPDATE users_user
-                                    SET full_name = %s, role = %s, date_joined = %s
-                                    WHERE email = %s
-                                    """
-                                    cursor.execute(update_query, (
-                                        values[columns.index('full_name')],
-                                        role,
-                                        aware_date,
-                                        email
-                                    ))
-                                else:
-                                    values[columns.index('role')] = role
-                                    modified_values = ', '.join(f"'{val}'" if val else 'NULL' for val in values)
-                                    modified_command = f"INSERT INTO users_user ({match.group(1)}) VALUES ({modified_values})"
-                                    cursor.execute(modified_command)
-                                if 'password' in columns and values[columns.index('password')]:
-                                    cursor.execute("UPDATE users_user SET password = %s WHERE email = %s", (
-                                        User.objects.make_password(values[columns.index('password')]),
-                                        email
-                                    ))
-                    conn.commit()
-                    conn.close()
-                    messages.success(request, 'Пользователи импортированы (SQL)')
-                except Exception as e:
-                    messages.error(request, f'Ошибка импорта: {str(e)}')
+                                try:
+                                    naive_date = datetime.datetime.strptime(row['Date Joined'], '%Y-%m-%d %H:%M')
+                                    aware_date = pytz.UTC.localize(naive_date)
+                                    role = role_mapping.get(row['Role'], 'staff')
+                                    avatar_path = row.get('Avatar Path', '').strip()
+                                    full_avatar_path = os.path.join(settings.MEDIA_ROOT, avatar_path) if avatar_path else ''
+                                    user, created = User.objects.get_or_create(
+                                        email=row['Email'],
+                                        defaults={
+                                            'id': row.get('ID'),
+                                            'full_name': row['Full Name'],
+                                            'role': role,
+                                            'date_joined': aware_date,
+                                            'password': row.get('Password', '') if 'Password' in headers else ''
+                                        }
+                                    )
+                                    if not created:
+                                        user.full_name = row['Full Name']
+                                        user.role = role
+                                        user.date_joined = aware_date
+                                        if 'Password' in headers and row['Password']:
+                                            user.password = row['Password']
+                                    if avatar_path and os.path.exists(full_avatar_path):
+                                        user.avatar.name = avatar_path
+                                    else:
+                                        user.avatar = None
+                                    user.save()
+                                except (IntegrityError, ValueError) as e:
+                                    has_errors = True
+                                    messages.error(request, f'Ошибка при импорте пользователя {row["Email"]}: {str(e)}')
+                                    continue
+
+                        # Импорт документов
+                        elif 'Title' in headers and 'Status' in headers:
+                            status_mapping = {'Черновик': 'draft', 'Отправлен': 'sent', 'Подписан': 'signed',
+                                             'draft': 'draft', 'sent': 'sent', 'signed': 'signed'}
+                            for row in reader:
+                                doc_id = row.get('ID', '').strip().lstrip('\ufeff')
+                                if not doc_id or not row.get('Title'):
+                                    has_errors = True
+                                    continue
+                                owner = User.objects.filter(email=row['Owner']).first() if row.get('Owner') else None
+                                if not owner:
+                                    has_errors = True
+                                    continue
+                                recipients_emails = row['Recipients'].split(', ') if row.get('Recipients') else []
+                                recipients = User.objects.filter(email__in=recipients_emails)
+                                try:
+                                    created_at_str = row['Created At']
+                                    try:
+                                        naive_date = datetime.datetime.strptime(created_at_str, '%Y-%m-%d %H:%M')
+                                    except ValueError:
+                                        naive_date = datetime.datetime.strptime(created_at_str, '%Y-%m-%d %H:%M:%S')
+                                    aware_date = pytz.UTC.localize(naive_date)
+                                    status = status_mapping.get(row['Status'], 'draft')
+                                    doc, created = Document.objects.get_or_create(
+                                        id=doc_id,
+                                        defaults={
+                                            'title': row['Title'],
+                                            'status': status,
+                                            'owner': owner,
+                                            'created_at': aware_date,
+                                        }
+                                    )
+                                    if not created:
+                                        doc.title = row['Title']
+                                        doc.status = status
+                                        doc.owner = owner
+                                        doc.created_at = aware_date
+                                    file_path = row.get('File Path', '').strip()
+                                    full_file_path = os.path.join(settings.MEDIA_ROOT, file_path) if file_path else ''
+                                    if file_path and os.path.exists(full_file_path):
+                                        doc.file.name = file_path
+                                    else:
+                                        doc.file.save(f'dummy_{doc_id}.txt', ContentFile(b''))
+                                    doc.save()
+                                    doc.recipients.set(recipients)
+                                except (IntegrityError, ValueError) as e:
+                                    has_errors = True
+                                    messages.error(request, f'Ошибка при импорте документа {doc_id}: {str(e)}')
+                                    continue
+
+                        else:
+                            os.remove(temp_file_path)
+                            messages.error(request, 'Неизвестный формат CSV: некорректные заголовки')
+                            return redirect('export_import')
+
+                        os.remove(temp_file_path)
+                        if has_errors:
+                            messages.error(request, 'Произошли ошибки при импорте данных, проверьте логи')
+                        else:
+                            messages.success(request, 'Данные успешно импортированы')
+                        return redirect('export_import')
+
+                    except UnicodeDecodeError:
+                        os.remove(temp_file_path)
+                        messages.error(request, 'Ошибка декодирования файла: файл должен быть в формате UTF-8')
+                        return redirect('export_import')
+
+                else:
+                    os.remove(temp_file_path)
+                    messages.error(request, 'Неподдерживаемый формат файла. Используйте .csv или .sql')
+                    return redirect('export_import')
+
+            except Exception as e:
+                if 'temp_file_path' in locals() and os.path.exists(temp_file_path):
+                    try:
+                        os.remove(temp_file_path)
+                    except OSError as remove_error:
+                        import time
+                        time.sleep(0.5)
+                        try:
+                            os.remove(temp_file_path)
+                        except OSError:
+                            messages.error(request, f'Не удалось удалить временный файл: {str(remove_error)}')
+                messages.error(request, f'Ошибка импорта: {str(e)}')
                 return redirect('export_import')
-        elif export_type == 'import_documents_sql':
-            sql_file = request.FILES.get('sql_file')
-            if sql_file:
-                try:
-                    db_settings = settings.DATABASES['default']
-                    conn = psycopg2.connect(
-                        dbname=db_settings['NAME'],
-                        user=db_settings['USER'],
-                        password=db_settings['PASSWORD'],
-                        host=db_settings['HOST'],
-                        port=db_settings['PORT']
-                    )
-                    cursor = conn.cursor()
-                    sql_content = sql_file.read().decode('utf-8')
-                    sql_commands = sql_content.split(';')
-                    status_mapping = {'Черновик': 'draft', 'Отправлен': 'sent', 'Подписан': 'signed', 'draft': 'draft',
-                                      'sent': 'sent', 'signed': 'signed'}
-                    for command in sql_commands:
-                        command = command.strip()
-                        if command and 'INSERT INTO docs_document' in command:
-                            match = re.match(r"INSERT INTO docs_document \((.*?)\) VALUES \((.*?)\)", command)
-                            if match:
-                                columns = [col.strip() for col in match.group(1).split(',')]
-                                values = [val.strip().strip("'") if val != 'NULL' else None for val in
-                                          match.group(2).split(',')]
-                                doc_id = values[columns.index('id')]
-                                naive_date = datetime.strptime(values[columns.index('created_at')],
-                                                               '%Y-%m-%d %H:%M:%S')
-                                aware_date = pytz.UTC.localize(naive_date)
-                                status = status_mapping.get(values[columns.index('status')], 'draft')
-                                cursor.execute("SELECT 1 FROM docs_document WHERE id = %s", (doc_id,))
-                                if cursor.fetchone():
-                                    update_query = """
-                                    UPDATE docs_document
-                                    SET title = %s, status = %s, owner_id = %s, recipient_id = %s, created_at = %s
-                                    WHERE id = %s
-                                    """
-                                    cursor.execute(update_query, (
-                                        values[columns.index('title')],
-                                        status,
-                                        values[columns.index('owner_id')],
-                                        values[columns.index('recipient_id')],
-                                        aware_date,
-                                        doc_id
-                                    ))
-                                else:
-                                    values[columns.index('status')] = status
-                                    modified_values = ', '.join(f"'{val}'" if val else 'NULL' for val in values)
-                                    modified_command = f"INSERT INTO docs_document ({match.group(1)}) VALUES ({modified_values})"
-                                    cursor.execute(modified_command)
-                    conn.commit()
-                    conn.close()
-                    messages.success(request, 'Документы импортированы (SQL)')
-                except Exception as e:
-                    messages.error(request, f'Ошибка импорта: {str(e)}')
-                return redirect('export_import')
+
     return render(request, 'users/export_import.html')
 
 def password_reset_request(request):

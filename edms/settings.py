@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from decouple import config
 
@@ -8,10 +9,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False  # Оставляем False для продакшена
+DEBUG = True  # Ставим False для продакшена
 
 # Укажи домен или IP твоего сервера
-ALLOWED_HOSTS = ['EDMS.pythonanywhere.com']
+ALLOWED_HOSTS = ['yourdomain.com', 'www.yourdomain.com', '127.0.0.1', 'localhost']
 
 # Application definition
 INSTALLED_APPS = [
@@ -98,14 +99,14 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 LOGIN_URL = '/users/login/'
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 1209600  # 2 недели
-SESSION_COOKIE_SECURE = True  # Только HTTPS в продакшене
-SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = False  # Только HTTPS в продакшене - True
+SESSION_COOKIE_HTTPONLY = False # В продакшене ставим - True
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_SAVE_EVERY_REQUEST = True
@@ -119,7 +120,7 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = 'dsistema@internet.ru'
 
 # Настройки безопасности для продакшена
-SECURE_SSL_REDIRECT = True  # Перенаправление всех HTTP-запросов на HTTPS
+SECURE_SSL_REDIRECT = False  # Перенаправление всех HTTP-запросов на HTTPS - True
 SECURE_HSTS_SECONDS = 31536000  # Включение HSTS (1 год)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
@@ -127,5 +128,5 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = 'DENY'
 
-CSRF_COOKIE_SECURE = True  # Только HTTPS
-CSRF_TRUSTED_ORIGINS = ['https://EDMS.pythonanywhere.com']
+CSRF_COOKIE_SECURE = False  # Только HTTPS - True
+CSRF_TRUSTED_ORIGINS = ['https://yourdomain.com', 'https://www.yourdomain.com', 'https://localhost:8000']
