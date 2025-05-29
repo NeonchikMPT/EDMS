@@ -152,17 +152,14 @@
         const togglePassword = document.querySelector('.toggle-password');
         const form = document.querySelector('form');
 
-        // Password error element
         const passwordError = document.createElement('div');
         passwordError.className = 'password-error';
         passwordInput.parentNode.parentNode.appendChild(passwordError);
 
-        // Email error element
         const emailError = document.createElement('div');
         emailError.className = 'email-error';
         emailInput.parentNode.insertAdjacentElement('afterend', emailError);
 
-        // Toggle password visibility
         if (passwordInput && togglePassword) {
             togglePassword.addEventListener('click', function() {
                 const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
@@ -174,16 +171,13 @@
             console.error('Password input or toggle element not found.');
         }
 
-        // Form submission validation
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault(); // Prevent default submission
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
             let isValid = true;
 
-            // Clear previous errors
             passwordError.textContent = '';
             emailError.textContent = '';
 
-            // Password validation
             const password = passwordInput.value;
             if (password.length < 8) {
                 passwordError.textContent += 'Пароль должен содержать минимум 8 символов. ';
@@ -206,29 +200,6 @@
                 isValid = false;
             }
 
-            // Email validation (check if already taken)
-            const email = emailInput.value;
-            try {
-                const response = await fetch('/check-email/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                    },
-                    body: JSON.stringify({ email: email })
-                });
-                const data = await response.json();
-                if (data.exists) {
-                    emailError.textContent = 'Этот email уже зарегистрирован.';
-                    isValid = false;
-                }
-            } catch (error) {
-                console.error('Error checking email:', error);
-                emailError.textContent = 'Данный email занят. Попробуйте другой.';
-                isValid = false;
-            }
-
-            // If all validations pass, submit the form
             if (isValid) {
                 form.submit();
             }

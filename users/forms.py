@@ -6,11 +6,10 @@ class RegisterForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ['email', 'full_name', 'role', 'password']
+        fields = ['email', 'full_name', 'password']
         labels = {
             'email': 'Email',
             'full_name': 'ФИО',
-            'role': 'Роль',
         }
 
     def clean_email(self):

@@ -195,6 +195,7 @@ def register_view(request):
         if form.is_valid():
             user = form.save(commit=False)
             user.set_password(form.cleaned_data['password'])
+            user.role = 'staff'
             user.save()
             messages.success(request, 'Регистрация успешна')
             print(f"Registration successful for {user.email}")
