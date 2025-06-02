@@ -28,13 +28,18 @@ from django.db import IntegrityError
 @admin_required
 def user_list(request):
     users = User.objects.order_by('full_name')
-    form = RegisterForm()
+    form = ProfileForm()  # Изменили на ProfileForm
 
     if request.method == 'POST':
-        form = RegisterForm(request.POST)
+        form = ProfileForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
-            user.set_password(form.cleaned_data['password'])
+            if not user.id:  # Если это новый пользователь
+                user.set_password(form.cleaned_data['new_password'] or form.cleaned_data.get('password', ''))  # Используем новый пароль или пустой
+            else:  # Если редактирование существующего пользователя
+                new_password = form.cleaned_data.get('new_password')
+                if new_password:
+                    user.set_password(new_password)
             user.save()
             return JsonResponse({
                 'success': True,
