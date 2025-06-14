@@ -1,2 +1,0 @@
-[console_scripts]
-my-django-project-manage = my_django_project.manage:main
